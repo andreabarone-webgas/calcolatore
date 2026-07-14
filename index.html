@@ -123,16 +123,18 @@
 
         righe.forEach(riga => {
             if (!riga || riga.length === 0 || !riga[0]) return;
+            
+            // Applichiamo il trim globale per ripulire spazi all'inizio o alla fine delle celle
             let cellaIniziale = riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ');
 
-            // Corrispondenza con spazio esatto (es: "gennaio 2026")
+            // Rilevamento mesi con spazio flessibile (es. "gennaio 2026")
             if (cellaIniziale.includes("2024") || cellaIniziale.includes("2025") || cellaIniziale.includes("2026") || cellaIniziale.includes("2027")) {
                 let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
                 let mFound = mesiNomi.find(m => cellaIniziale.includes(m));
                 let aFound = ["2024", "2025", "2026", "2027"].find(a => cellaIniziale.includes(a));
                 
                 if (mFound && aFound) {
-                    bloccoCorrenteMese = mFound + " " + aFound; // Corretto: inserito lo spazio per allineamento
+                    bloccoCorrenteMese = mFound + " " + aFound;
                     storicoDinamico[bloccoCorrenteMese] = { 
                         kpi: { spesa: 0, lead: 0, cpl: 0 }, 
                         google: { spesa: 0, conv: 0, cpc: 0 }, 
@@ -146,62 +148,65 @@
                 }
             }
 
-            let cLow = cellaIniziale.toLowerCase();
-            if (cLow.includes("corso") || cLow.includes("corsi")) { sezioneAttiva = "CORSI_TABELLA"; return; }
-            if (cLow.includes("google ads") || cLow.includes("google performance")) { sezioneAttiva = "GOOGLE_PERF"; return; }
-            if (cLow.includes("meta ads") || cLow.includes("meta performance")) { sezioneAttiva = "META_PERF"; return; }
-            if (cLow.includes("ipsef")) { sezioneAttiva = "IPSEF_PERF"; return; }
-            if (cLow.includes("ssml")) { sezioneAttiva = "SSML_PERF"; return; }
+            if (cellaIniziale.includes("corso") || cellaIniziale.includes("corsi")) { sezioneAttiva = "CORSI_TABELLA"; return; }
+            if (cellaIniziale.includes("google ads performance") || cellaIniziale.includes("google performance")) { sezioneAttiva = "GOOGLE_PERF"; return; }
+            if (cellaIniziale.includes("meta ads performance") || cellaIniziale.includes("meta performance")) { sezioneAttiva = "META_PERF"; return; }
+            if (cellaIniziale.includes("kpi ipsef") || cellaIniziale.includes("meta ads ipsef") || cellaIniziale.includes("google ads ipsef")) { sezioneAttiva = "IPSEF_PERF"; return; }
+            if (cellaIniziale.includes("kpi ssml") || cellaIniziale.includes("meta ads ssml")) { sezioneAttiva = "SSML_PERF"; return; }
 
             if (bloccoCorrenteMese && storicoDinamico[bloccoCorrenteMese]) {
                 let m = storicoDinamico[bloccoCorrenteMese];
                 let val = riga[1] ? pulisciNumero(riga[1]) : 0;
 
                 if (sezioneAttiva === "KPI_GENERALE") {
-                    if (cLow.includes("investimento") || cLow.includes("spesa")) m.kpi.spesa = val;
-                    if (cLow.includes("lead")) m.kpi.lead = val;
-                    if (cLow.includes("costo per lead") || cLow.includes("cpl")) m.kpi.cpl = val;
+                    if (cellaIniziale.includes("investimento")) m.kpi.spesa = val;
+                    if (cellaIniziale.includes("lead totali")) m.kpi.lead = val;
+                    if (cellaIniziale.includes("costo per lead")) m.kpi.cpl = val;
                 }
-                else if (sezioneAttiva === "CORSI_TABELLA" && !cLow.includes("totale")) {
+                else if (sezioneAttiva === "CORSI_TABELLA" && !cellaIniziale.includes("totale")) {
                     let corsoCodice = riga[0].toString().trim().toUpperCase();
                     m.corsi[corsoCodice] = riga[3] ? pulisciNumero(riga[3]) : 0;
                 }
                 else if (sezioneAttiva === "GOOGLE_PERF") {
-                    if (cLow.includes("investimento") || cLow.includes("spesa")) m.google.spesa = val;
-                    if (cLow.includes("conversione") || cLow.includes("conversioni")) m.google.conv = val;
-                    if (cLow.includes("costo per conversione") || cLow.includes("cpc")) m.google.cpc = val;
+                    if (cellaIniziale.includes("investimento")) m.google.spesa = val;
+                    if (cellaIniziale.includes("conversioni")) m.google.conv = val;
+                    if (cellaIniziale.includes("costo per conversione")) m.google.cpc = val;
                 }
                 else if (sezioneAttiva === "META_PERF") {
-                    if (cLow.includes("investimento") || cLow.includes("spesa")) m.meta.spesa = val;
-                    if (cLow.includes("lead")) m.meta.lead = val;
-                    if (cLow.includes("costo per lead") || cLow.includes("cpl")) m.meta.cpl = val;
+                    if (cellaIniziale.includes("investimento")) m.meta.spesa = val;
+                    if (cellaIniziale.includes("lead totali")) m.meta.lead = val;
+                    if (cellaIniziale.includes("costo per lead")) m.meta.cpl = val;
                 }
                 else if (sezioneAttiva === "IPSEF_PERF") {
-                    if (cLow.includes("60 cfu") || cLow.includes("30 cfu") || cLow.includes("classi")) {
-                        if (cLow.includes("investimento") || cLow.includes("spesa")) m.ipsef.r1_spesa = val;
-                        if (cLow.includes("lead")) m.ipsef.r1_lead = val;
-                        if (cLow.includes("costo") || cLow.includes("cpl")) m.ipsef.r1_cpl = val;
+                    if (cellaIniziale.includes("60 cfu - 30 cfu")) {
+                        if (cellaIniziale.includes("investimento")) m.ipsef.r1_spesa = val;
+                        if (cellaIniziale.includes("lead")) m.ipsef.r1_lead = val;
+                        if (cellaIniziale.includes("costo")) m.ipsef.r1_cpl = val;
                     }
-                    else if (cLow.includes("tfa") || cLow.includes("sostegno")) {
-                        if (cLow.includes("investimento") || cLow.includes("spesa")) m.ipsef.r4_spesa = val;
-                        if (cLow.includes("lead")) m.ipsef.r4_lead = val;
-                        if (cLow.includes("costo") || cLow.includes("cpl")) m.ipsef.r4_cpl = val;
+                    else if (cellaIniziale.includes("tfa sostegno")) {
+                        if (cellaIniziale.includes("investimento")) m.ipsef.r4_spesa = val;
+                        if (cellaIniziale.includes("lead")) m.ipsef.r4_lead = val;
+                        if (cellaIniziale.includes("costo")) m.ipsef.r4_cpl = val;
                     }
-                    else if (cLow.includes("branding")) {
-                        if (cLow.includes("investimento") || cLow.includes("spesa")) m.ipsef.r7_spesa = val;
-                        if (cLow.includes("lead")) m.ipsef.r7_lead = val;
-                        if (cLow.includes("costo") || cLow.includes("cpl")) m.ipsef.r7_cpl = val;
+                    else if (cellaIniziale.includes("branding campaigns")) {
+                        if (cellaIniziale.includes("investimento")) m.ipsef.r7_spesa = val;
+                        if (cellaIniziale.includes("lead")) m.ipsef.r7_lead = val;
+                        if (cellaIniziale.includes("costo")) m.ipsef.r7_cpl = val;
                     }
-                    else if (cLow.includes("totale")) {
-                        if (cLow.includes("investimento") || cLow.includes("spesa")) m.ipsef.tot_spesa = val;
-                        if (cLow.includes("lead")) m.ipsef.tot_lead = val;
-                        if (cLow.includes("costo") || cLow.includes("cpl")) m.ipsef.tot_cpl = val;
+                    else if (cellaIniziale.includes("investimento pubblicitario totale") || cellaIniziale.includes("investimento publicitario totale")) {
+                        m.ipsef.tot_spesa = val;
+                    }
+                    else if (cellaIniziale.includes("totale") && cellaIniziale.includes("lead")) {
+                        m.ipsef.tot_lead = val;
+                    }
+                    else if (cellaIniziale.includes("totale") && cellaIniziale.includes("costo")) {
+                        m.ipsef.tot_cpl = val;
                     }
                 }
                 else if (sezioneAttiva === "SSML_PERF") {
-                    if (cLow.includes("investimento") || cLow.includes("spesa")) m.ssml.spesa = val;
-                    if (cLow.includes("lead")) m.ssml.lead = val;
-                    if (cLow.includes("costo per lead") || cLow.includes("cpl")) m.ssml.cpl = val;
+                    if (cellaIniziale.includes("investimento")) m.ssml.spesa = val;
+                    if (cellaIniziale.includes("lead totali")) m.ssml.lead = val;
+                    if (cellaIniziale.includes("costo per lead")) m.ssml.cpl = val;
                 }
             }
         });
@@ -244,8 +249,8 @@
                         let idxP = idxC === 0 ? 11 : idxC - 1;
                         let aPrec = idxC === 0 ? aCorr - 1 : aCorr;
                         
-                        chiaveMoM = elencoMesi[idxP] + " " + aPrec; // Aggiunto spazio
-                        chiaveYoY = nMese + " " + (aCorr - 1);       // Aggiunto spazio
+                        chiaveMoM = elencoMesi[idxP] + " " + aPrec;
+                        chiaveYoY = nMese + " " + (aCorr - 1);
                     }
                 }
 

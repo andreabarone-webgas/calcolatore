@@ -125,14 +125,14 @@
             if (!riga || riga.length === 0 || !riga[0]) return;
             let cellaIniziale = riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ');
 
-            // Rilevamento dei blocchi mensili (es: giugno 2026, maggio 2025, ecc.)
+            // Corrispondenza con spazio esatto (es: "gennaio 2026")
             if (cellaIniziale.includes("2024") || cellaIniziale.includes("2025") || cellaIniziale.includes("2026") || cellaIniziale.includes("2027")) {
                 let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
                 let mFound = mesiNomi.find(m => cellaIniziale.includes(m));
                 let aFound = ["2024", "2025", "2026", "2027"].find(a => cellaIniziale.includes(a));
                 
                 if (mFound && aFound) {
-                    bloccoCorrenteMese = mFound + aFound;
+                    bloccoCorrenteMese = mFound + " " + aFound; // Corretto: inserito lo spazio per allineamento
                     storicoDinamico[bloccoCorrenteMese] = { 
                         kpi: { spesa: 0, lead: 0, cpl: 0 }, 
                         google: { spesa: 0, conv: 0, cpc: 0 }, 
@@ -146,7 +146,6 @@
                 }
             }
 
-            // Cambi di sezione flessibili (tollerano differenze di maiuscole/minuscole o plurale/singolare)
             let cLow = cellaIniziale.toLowerCase();
             if (cLow.includes("corso") || cLow.includes("corsi")) { sezioneAttiva = "CORSI_TABELLA"; return; }
             if (cLow.includes("google ads") || cLow.includes("google performance")) { sezioneAttiva = "GOOGLE_PERF"; return; }
@@ -165,7 +164,6 @@
                 }
                 else if (sezioneAttiva === "CORSI_TABELLA" && !cLow.includes("totale")) {
                     let corsoCodice = riga[0].toString().trim().toUpperCase();
-                    // Intercetta correttamente il CPL memorizzato nella quarta colonna (indice 3)
                     m.corsi[corsoCodice] = riga[3] ? pulisciNumero(riga[3]) : 0;
                 }
                 else if (sezioneAttiva === "GOOGLE_PERF") {
@@ -246,8 +244,8 @@
                         let idxP = idxC === 0 ? 11 : idxC - 1;
                         let aPrec = idxC === 0 ? aCorr - 1 : aCorr;
                         
-                        chiaveMoM = elencoMesi[idxP] + aPrec;
-                        chiaveYoY = nMese + (aCorr - 1);
+                        chiaveMoM = elencoMesi[idxP] + " " + aPrec; // Aggiunto spazio
+                        chiaveYoY = nMese + " " + (aCorr - 1);       // Aggiunto spazio
                     }
                 }
 
@@ -381,7 +379,7 @@
 
         matriceCopiaIncolla.push([meseRilevato.toLowerCase(), "", "", ""]);
         matriceCopiaIncolla.push(["KPI", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["Investimento Pubblicitario", "€ " + totaleSpesaCorsi.toFixed(2).replace('.', ','), formatPct(sMoM.kpi.spesa ? (totaleSpesaCorsi / sMoM.kpi.spesa) - 1 : 0), formatPct(sYoY.kpi.spesa ? (totaleSpesaCorsi / sYoY.kpi.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + totaleSpesaCorsi.toFixed(2).replace('.', ','), formatPct(sMoM.kpi.spesa ? (totaleSpesaCorsi / sMoM.kpi.spesa) - 1 : 0), formatPct(sYoY.kpi.spesa ? (totaleSpesaCorsi / sYoY.kpi.spesa) - 1 : 0)]);
         matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(totaleLeadCorsi), formatPct(sMoM.kpi.lead ? (totaleLeadCorsi / sMoM.kpi.lead) - 1 : 0), formatPct(sYoY.kpi.lead ? (totaleLeadCorsi / sYoY.kpi.lead) - 1 : 0)]);
         matriceCopiaIncolla.push(["Costo per Lead (CRM)", "€ " + cplGlobale.toFixed(2).replace('.', ','), formatPct(sMoM.kpi.cpl ? (cplGlobale / sMoM.kpi.cpl) - 1 : 0), formatPct(sYoY.kpi.cpl ? (cplGlobale / sYoY.kpi.cpl) - 1 : 0)]);
         matriceCopiaIncolla.push(["", "", "", ""]);
@@ -396,14 +394,14 @@
 
         let cpcGoogle = gConvTotali > 0 ? (gSpesaBranding / gConvTotali) : 0;
         matriceCopiaIncolla.push(["GOOGLE ADS PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["Investimento Pubblicitario", "€ " + gSpesaBranding.toFixed(2).replace('.', ','), formatPct(sMoM.google.spesa ? (gSpesaBranding / sMoM.google.spesa) - 1 : 0), formatPct(sYoY.google.spesa ? (gSpesaBranding / sYoY.google.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + gSpesaBranding.toFixed(2).replace('.', ','), formatPct(sMoM.google.spesa ? (gSpesaBranding / sMoM.google.spesa) - 1 : 0), formatPct(sYoY.google.spesa ? (gSpesaBranding / sYoY.google.spesa) - 1 : 0)]);
         matriceCopiaIncolla.push(["Conversioni", Math.round(gConvTotali), formatPct(sMoM.google.conv ? (gConvTotali / sMoM.google.conv) - 1 : 0), formatPct(sYoY.google.conv ? (gConvTotali / sYoY.google.conv) - 1 : 0)]);
         matriceCopiaIncolla.push(["Costo per Conversione", "€ " + cpcGoogle.toFixed(2).replace('.', ','), formatPct(sMoM.google.cpc ? (cpcGoogle / sMoM.google.cpc) - 1 : 0), formatPct(sYoY.google.cpc ? (cpcGoogle / sYoY.google.cpc) - 1 : 0)]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
         let cplMeta = mLeadFiltratiTot > 0 ? (mSpesaFiltrataTot / mLeadFiltratiTot) : 0;
         matriceCopiaIncolla.push(["META ADS PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["Investimento Pubblicitario", "€ " + mSpesaFiltrataTot.toFixed(2).replace('.', ','), formatPct(sMoM.meta.spesa ? (mSpesaFiltrataTot / sMoM.meta.spesa) - 1 : 0), formatPct(sYoY.meta.spesa ? (mSpesaFiltrataTot / sYoY.meta.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + mSpesaFiltrataTot.toFixed(2).replace('.', ','), formatPct(sMoM.meta.spesa ? (mSpesaFiltrataTot / sMoM.meta.spesa) - 1 : 0), formatPct(sYoY.meta.spesa ? (mSpesaFiltrataTot / sYoY.meta.spesa) - 1 : 0)]);
         matriceCopiaIncolla.push(["Lead Totali", Math.round(mLeadFiltratiTot), formatPct(sMoM.meta.lead ? (mLeadFiltratiTot / sMoM.meta.lead) - 1 : 0), formatPct(sYoY.meta.lead ? (mLeadFiltratiTot / sYoY.meta.lead) - 1 : 0)]);
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(sMoM.meta.cpl ? (cplMeta / sMoM.meta.cpl) - 1 : 0), formatPct(sYoY.meta.cpl ? (cplMeta / sYoY.meta.cpl) - 1 : 0)]);
         matriceCopiaIncolla.push(["", "", "", ""]);
@@ -416,29 +414,29 @@
         let ipsefTotCpl = ipsefTotLead > 0 ? (ipsefTotSpesa / ipsefTotLead) : 0;
 
         matriceCopiaIncolla.push(["KPI IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["Investimento Pubblicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r1_spesa ? (ipsefR1Spesa / sMoM.ipsef.r1_spesa) - 1 : 0), formatPct(sYoY.ipsef?.r1_spesa ? (ipsefR1Spesa / sYoY.ipsef.r1_spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r1_spesa ? (ipsefR1Spesa / sMoM.ipsef.r1_spesa) - 1 : 0), formatPct(sYoY.ipsef?.r1_spesa ? (ipsefR1Spesa / sYoY.ipsef.r1_spesa) - 1 : 0)]);
         matriceCopiaIncolla.push(["Lead 60 CFU - 30 CFU  - Classi di Concorso (CRM)", Math.round(ipsefR1Lead), formatPct(sMoM.ipsef?.r1_lead ? (ipsefR1Lead / sMoM.ipsef.r1_lead) - 1 : 0), formatPct(sYoY.ipsef?.r1_lead ? (ipsefR1Lead / sYoY.ipsef.r1_lead) - 1 : 0)]);
         matriceCopiaIncolla.push(["Costo per Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Cpl.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r1_cpl ? (ipsefR1Cpl / sMoM.ipsef.r1_cpl) - 1 : 0), formatPct(sYoY.ipsef?.r1_cpl ? (ipsefR1Cpl / sYoY.ipsef.r1_cpl) - 1 : 0)]);
-        matriceCopiaIncolla.push(["Investimento  Pubblicitario TFA Sostegno (CRM )", "€ " + ipsefR4Spesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r4_spesa ? (ipsefR4Spesa / sMoM.ipsef.r4_spesa) - 1 : 0), "N.D."]);
+        matriceCopiaIncolla.push(["Investimento  Publicitario TFA Sostegno (CRM )", "€ " + ipsefR4Spesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r4_spesa ? (ipsefR4Spesa / sMoM.ipsef.r4_spesa) - 1 : 0), "N.D."]);
         matriceCopiaIncolla.push(["Lead TFA Sostegno (CRM)", Math.round(ipsefR4Lead), formatPct(sMoM.ipsef?.r4_lead ? (ipsefR4Lead / sMoM.ipsef.r4_lead) - 1 : 0), "N.D."]);
         matriceCopiaIncolla.push(["Costo per Lead TFA Sostegno (CRM)", "€ " + ipsefR4Cpl.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r4_cpl ? (ipsefR4Cpl / sMoM.ipsef.r4_cpl) - 1 : 0), "N.D."]);
-        matriceCopiaIncolla.push(["Investimento Pubblicitario Branding Campaigns (CRM)", "€ " + ipsefR7Spesa.toFixed(2).replace('.', ','), "N.D.", formatPct(sYoY.ipsef?.r7_spesa ? (ipsefR7Spesa / sYoY.ipsef.r7_spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario Branding Campaigns (CRM)", "€ " + ipsefR7Spesa.toFixed(2).replace('.', ','), "N.D.", formatPct(sYoY.ipsef?.r7_spesa ? (ipsefR7Spesa / sYoY.ipsef.r7_spesa) - 1 : 0)]);
         matriceCopiaIncolla.push(["Lead Branding Campaigns (CRM)", Math.round(ipsefR7Lead), "N.D.", formatPct(sYoY.ipsef?.r7_lead ? (ipsefR7Lead / sYoY.ipsef.r7_lead) - 1 : 0)]);
         matriceCopiaIncolla.push(["Costo per Lead Branding Campaigns (CRM)", "€ " + ipsefR7Cpl.toFixed(2).replace('.', ','), "N.D.", formatPct(sYoY.ipsef?.r7_cpl ? (ipsefR7Cpl / sYoY.ipsef.r7_cpl) - 1 : 0)]);
-        matriceCopiaIncolla.push(["Investimento Pubblicitario Totale (CRM)", "€ " + ipsefTotSpesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.tot_spesa ? (ipsefTotSpesa / sMoM.ipsef.tot_spesa) - 1 : 0), formatPct(sYoY.ipsef?.tot_spesa ? (ipsefTotSpesa / sYoY.ipsef.tot_spesa) - 1 : 0)]);
-        matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(ipsefTotLead), formatPct(sMoM.ipsef?.tot_lead ? (ipsefTotLead / mMoM.ipsef.tot_lead) - 1 : 0), formatPct(sYoY.ipsef?.tot_lead ? (ipsefTotLead / sYoY.ipsef.tot_lead) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario Totale (CRM)", "€ " + ipsefTotSpesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.tot_spesa ? (ipsefTotSpesa / sMoM.ipsef.tot_spesa) - 1 : 0), formatPct(sYoY.ipsef?.tot_spesa ? (ipsefTotSpesa / sYoY.ipsef.tot_spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(ipsefTotLead), formatPct(sMoM.ipsef?.tot_lead ? (ipsefTotLead / sMoM.ipsef.tot_lead) - 1 : 0), formatPct(sYoY.ipsef?.tot_lead ? (ipsefTotLead / sYoY.ipsef.tot_lead) - 1 : 0)]);
         matriceCopiaIncolla.push(["Costo per Lead Totale (CRM)", "€ " + ipsefTotCpl.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.tot_cpl ? (ipsefTotCpl / sMoM.ipsef.tot_cpl) - 1 : 0), formatPct(sYoY.ipsef?.tot_cpl ? (ipsefTotCpl / sYoY.ipsef.tot_cpl) - 1 : 0)]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
         let cplSsml = ssmlLeadTotali > 0 ? (ssmlSpesaAssoluta / ssmlLeadTotali) : 0;
         matriceCopiaIncolla.push(["KPI SSML", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["Investimento Pubblicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(sMoM.ssml.spesa ? (ssmlSpesaAssoluta / sMoM.ssml.spesa) - 1 : 0), formatPct(sYoY.ssml.spesa ? (ssmlSpesaAssoluta / sYoY.ssml.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(sMoM.ssml.spesa ? (ssmlSpesaAssoluta / sMoM.ssml.spesa) - 1 : 0), formatPct(sYoY.ssml.spesa ? (ssmlSpesaAssoluta / sYoY.ssml.spesa) - 1 : 0)]);
         matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(ssmlLeadTotali), formatPct(sMoM.ssml.lead ? (ssmlLeadTotali / sMoM.ssml.lead) - 1 : 0), formatPct(sYoY.ssml.lead ? (ssmlLeadTotali / sYoY.ssml.lead) - 1 : 0)]);
         matriceCopiaIncolla.push(["Costo per Lead (CRM)", "€ " + cplSsml.toFixed(2).replace('.', ','), formatPct(sMoM.ssml.cpl ? (cplSsml / sMoM.ssml.cpl) - 1 : 0), formatPct(sYoY.ssml.cpl ? (cplSsml / sYoY.ssml.cpl) - 1 : 0)]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
         matriceCopiaIncolla.push(["META ADS SSML", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["Investimento Pubblicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(sMoM.ssml.spesa ? (ssmlSpesaAssoluta / sMoM.ssml.spesa) - 1 : 0), formatPct(sYoY.ssml.spesa ? (ssmlSpesaAssoluta / sYoY.ssml.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(sMoM.ssml.spesa ? (ssmlSpesaAssoluta / sMoM.ssml.spesa) - 1 : 0), formatPct(sYoY.ssml.spesa ? (ssmlSpesaAssoluta / sYoY.ssml.spesa) - 1 : 0)]);
         matriceCopiaIncolla.push(["Lead Totali", Math.round(ssmlLeadMetaAssoluti), formatPct(sMoM.ssml.lead ? (ssmlLeadMetaAssoluti / sMoM.ssml.lead) - 1 : 0), formatPct(sYoY.ssml.lead ? (ssmlLeadMetaAssoluti / sYoY.ssml.lead) - 1 : 0)]);
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + (ssmlLeadMetaAssoluti > 0 ? ssmlSpesaAssoluta/ssmlLeadMetaAssoluti : 0).toFixed(2).replace('.', ','), formatPct(sMoM.ssml.cpl ? ((ssmlLeadMetaAssoluti > 0 ? ssmlSpesaAssoluta/ssmlLeadMetaAssoluti : 0) / sMoM.ssml.cpl) - 1 : 0), formatPct(sYoY.ssml.cpl ? ((ssmlLeadMetaAssoluti > 0 ? ssmlSpesaAssoluta/ssmlLeadMetaAssoluti : 0) / sYoY.ssml.cpl) - 1 : 0)]);
 

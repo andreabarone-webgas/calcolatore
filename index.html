@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Cloud Corretto</title>
+    <title>Super Aggregatore Workspace - Cloud Privato</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -128,7 +128,7 @@
             let c1 = riga[1] ? riga[1].toString().trim() : "";
             let c3 = riga[3] ? riga[3].toString().trim() : "";
 
-            // Intercettamento macro-blocco mensile (es. "aprile 2026")
+            // Intercettamento macro-blocco mensile
             if (c0.includes("2024") || c0.includes("2025") || c0.includes("2026") || c0.includes("2027")) {
                 let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
                 let mFound = mesiNomi.find(m => c0.includes(m));
@@ -155,8 +155,8 @@
             if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
             if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
             if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; return; }
-            if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; return; }
-            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
+            if (c0.includes("kpi ipsef") || c0.includes("meta ads ipsef") || c0.includes("google ads ipsef")) { sottoSezione = "IPSEF_PERF"; return; }
+            if (c0.includes("kpi ssml") || c0.includes("meta ads ssml")) { sottoSezione = "SSML_PERF"; return; }
 
             let numC1 = pulisciNumero(c1);
             let numC3 = pulisciNumero(c3);
@@ -199,10 +199,10 @@
                 else if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) {
                     m.ipsef.tot_spesa = numC1;
                 }
-                else if (c0.includes("totale (crm)") && c0.includes("lead")) {
+                else if (c0.includes("totale") && c0.includes("lead")) {
                     m.ipsef.tot_lead = numC1;
                 }
-                else if (c0.includes("totale (crm)") && c0.includes("costo")) {
+                else if (c0.includes("totale") && c0.includes("costo")) {
                     m.ipsef.tot_cpl = numC1;
                 }
             }
@@ -295,7 +295,6 @@
         return isNaN(n) ? 0 : n;
     }
 
-    // Forza ricalcolo
     function checkStato() {
         if (datiMetaRaw && datiGoogleRaw && datiCrmRaw) {
             costruisciWorkspace();

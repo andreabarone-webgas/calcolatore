@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Cloud Fix</title>
+    <title>Super Aggregatore Workspace - Cloud Fix Definitivo</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -128,30 +128,29 @@
             let c1 = riga[1] ? riga[1].toString().trim() : "";
             let c3 = riga[3] ? riga[3].toString().trim() : "";
 
-            // Intercettamento macro-blocco mensile
-            if (c0.includes("2024") || c0.includes("2025") || c0.includes("2026") || c0.includes("2027")) {
-                let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
-                let mFound = mesiNomi.find(m => c0.includes(m));
-                let aFound = ["2024", "2025", "2026", "2027"].find(a => c0.includes(a));
-                
-                if (mFound && aFound) {
-                    bloccoCorrenteMese = mFound + " " + aFound;
-                    storicoDinamico[bloccoCorrenteMese] = {
-                        kpi: { spesa: 0, lead: 0, cpl: 0 },
-                        google: { spesa: 0, conv: 0, cpc: 0 },
-                        meta: { spesa: 0, lead: 0, cpl: 0 },
-                        ipsef: { r1_spesa: 0, r1_lead: 0, r1_cpl: 0, r4_spesa: 0, r4_lead: 0, r4_cpl: 0, r7_spesa: 0, r7_lead: 0, r7_cpl: 0, tot_spesa: 0, tot_lead: 0, tot_cpl: 0 },
-                        ssml: { spesa: 0, lead: 0, cpl: 0 },
-                        corsi: {}
-                    };
-                    sottoSezione = "KPI_GENERALE";
-                    return;
-                }
+            // Rilevamento e cambio macro-blocco mese
+            let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+            let mFound = mesiNomi.find(m => c0.includes(m));
+            let aFound = ["2024", "2025", "2026", "2027"].find(a => c0.includes(a));
+            
+            if (mFound && aFound) {
+                bloccoCorrenteMese = mFound + " " + aFound;
+                storicoDinamico[bloccoCorrenteMese] = {
+                    kpi: { spesa: 0, lead: 0, cpl: 0 },
+                    google: { spesa: 0, conv: 0, cpc: 0 },
+                    meta: { spesa: 0, lead: 0, cpl: 0 },
+                    ipsef: { r1_spesa: 0, r1_lead: 0, r1_cpl: 0, r4_spesa: 0, r4_lead: 0, r4_cpl: 0, r7_spesa: 0, r7_lead: 0, r7_cpl: 0, tot_spesa: 0, tot_lead: 0, tot_cpl: 0 },
+                    ssml: { spesa: 0, lead: 0, cpl: 0 },
+                    corsi: {}
+                };
+                sottoSezione = "KPI_GENERALE";
+                return; // Esce solo dopo aver allocato correttamente l'oggetto stabile dello storico
             }
 
             if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) return;
             let m = storicoDinamico[bloccoCorrenteMese];
 
+            // Cambi di sotto-sezione interni al blocco del mese
             if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
             if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
             if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; return; }

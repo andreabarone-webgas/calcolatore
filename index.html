@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Cloud Definitivo</title>
+    <title>Super Aggregatore Workspace - Cloud Corretto</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -126,10 +126,9 @@
             
             let c0 = riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ');
             let c1 = riga[1] ? riga[1].toString().trim() : "";
-            let c2 = riga[2] ? riga[2].toString().trim() : "";
             let c3 = riga[3] ? riga[3].toString().trim() : "";
 
-            // Intercettamento macro-blocco mensile
+            // Intercettamento macro-blocco mensile (es. "aprile 2026")
             if (c0.includes("2024") || c0.includes("2025") || c0.includes("2026") || c0.includes("2027")) {
                 let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
                 let mFound = mesiNomi.find(m => c0.includes(m));
@@ -153,14 +152,12 @@
             if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) return;
             let m = storicoDinamico[bloccoCorrenteMese];
 
-            // Rilevamento cambi di sotto-tabella interni al blocco del mese
-            if (c0.includes("corso")) { sottoSezione = "CORSI_TABELLA"; return; }
+            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
             if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
             if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; return; }
             if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; return; }
             if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
 
-            // Parsing dei valori basato sulla riga corrente e sulla sottoSezione attiva
             let numC1 = pulisciNumero(c1);
             let numC3 = pulisciNumero(c3);
 
@@ -171,7 +168,7 @@
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale")) {
                 let corsoCodice = riga[0].toString().trim().toUpperCase();
-                m.corsi[corsoCodice] = numC3; // CPL del singolo corso
+                m.corsi[corsoCodice] = numC3;
             }
             else if (sottoSezione === "GOOGLE_PERF") {
                 if (c0.includes("investimento")) m.google.spesa = numC1;
@@ -298,6 +295,7 @@
         return isNaN(n) ? 0 : n;
     }
 
+    // Forza ricalcolo
     function checkStato() {
         if (datiMetaRaw && datiGoogleRaw && datiCrmRaw) {
             costruisciWorkspace();
@@ -413,7 +411,7 @@
         matriceCopiaIncolla.push(["META ADS PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + mSpesaFiltrataTot.toFixed(2).replace('.', ','), formatPct(sMoM.meta.spesa ? (mSpesaFiltrataTot / sMoM.meta.spesa) - 1 : 0), formatPct(sYoY.meta.spesa ? (mSpesaFiltrataTot / sYoY.meta.spesa) - 1 : 0)]);
         matriceCopiaIncolla.push(["Lead Totali", Math.round(mLeadFiltratiTot), formatPct(sMoM.meta.lead ? (mLeadFiltratiTot / sMoM.meta.lead) - 1 : 0), formatPct(sYoY.meta.lead ? (mLeadFiltratiTot / sYoY.meta.lead) - 1 : 0)]);
-        matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(sMoM.meta.cpl ? (cplMeta / mMoM.meta.cpl) - 1 : 0), formatPct(sYoY.meta.cpl ? (cplMeta / sYoY.meta.cpl) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(sMoM.meta.cpl ? (cplMeta / sMoM.meta.cpl) - 1 : 0), formatPct(sYoY.meta.cpl ? (cplMeta / sYoY.meta.cpl) - 1 : 0)]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;

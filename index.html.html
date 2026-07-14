@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Aggregatore Workspace - Cloud</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h1 { color: #0056b3; font-size: 24px; margin-bottom: 5px; }
+        p.subtitle { color: #6c757d; margin-bottom: 25px; }
+        .grid-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .drop-zone { border: 2px dashed #0056b3; border-radius: 6px; padding: 20px; text-align: center; background: #f0f7ff; cursor: pointer; transition: 0.2s; font-size: 14px; }
+        .drop-zone.dragover { background: #e1eeff; }
+        .status-badge { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: bold; background: #6c757d; color: white; }
+        .status-badge.ready { background: #28a745; color: white; }
+        .config-section { background: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 20px; }
+        .checkbox-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; font-size: 11px; }
+        .btn-copy { background-color: #28a745; color: white; border: none; padding: 14px 25px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; width: 100%; display: none; margin-top: 10px; }
+        .btn-copy:hover { background-color: #218838; }
+        #preview { margin-top: 30px; display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+        th, td { border: 1px solid #dee2e6; padding: 6px 10px; text-align: left; }
+        th { background: #212529; color: white; }
+        .sync-banner { background: #e2ffd9; border: 1px solid #28a745; color: #1e7e34; padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
+    <p class="subtitle">Trascina i tre file richiesti. Lo storico viene sincronizzato automaticamente in background dal tuo Google Sheets.</p>
+
+    <div id="cloud-status" class="sync-banner">
+        <span>🔄 Connessione allo storico Cloud in corso...</span>
+    </div>
+
+    <div class="grid-inputs">
+        <div id="drop-meta" class="drop-zone" onclick="document.getElementById('file-meta').click()">
+            <p><strong>1. Report META ADS (Complessivo)</strong><br>Trascina il CSV delle performance</p>
+            <input type="file" id="file-meta" accept=".csv" style="display:none">
+            <span id="badge-meta" class="status-badge">Mancante</span>
+        </div>
+        <div id="drop-google" class="drop-zone" onclick="document.getElementById('file-google').click()">
+            <p><strong>2. Report GOOGLE ADS</strong><br>Trascina il CSV delle campagne</p>
+            <input type="file" id="file-google" accept=".csv" style="display:none">
+            <span id="badge-google" class="status-badge">Mancante</span>
+        </div>
+        <div id="drop-crm" class="drop-zone" onclick="document.getElementById('file-crm').click()">
+            <p><strong>3. Esportazione CRM</strong><br>Trascina il CSV Persone Interessate</p>
+            <input type="file" id="file-crm" accept=".csv" style="display:none">
+            <span id="badge-crm" class="status-badge">Mancante</span>
+        </div>
+    </div>
+
+    <div class="config-section">
+        <strong>Filtro dinamico Lead CRM IPSEF (Spunte per inclusioni mensili):</strong>
+        <div id="ipsef-checkboxes" class="checkbox-grid"></div>
+    </div>
+
+    <button id="copy-btn" class="btn-copy" onclick="copiaBloccoMese()">📋 Copia Intero Blocco Mese per Google Sheets</button>
+
+    <div id="preview">
+        <h3 id="preview-title">Anteprima Dati Strutturati</h3>
+        <div id="preview-table-container"></div>
+    </div>
+</div>
+
+<script>
+    const campagneIpsefBase = [
+        "Preadesione 30 cfu", "IPSEF 60 CFU", "AA22_IPSEF", "A60_IPSEF", "A28_IPSEF", 
+        "IPSEF 30 CFU", "A45_IPSEF", "B20_IPSEF", "A46_IPSEF", "A48_IPSEF", 
+        "A01_IPSEF", "A19_IPSEF", "A27_IPSEF", "A50_IPSEF", "A12_IPSEF", 
+        "B19_IPSEF", "AB22_IPSEF", "A11_IPSEF", "A18_IPSEF", "B16_IPSEF", 
+        "AC25_IPSEF", "B21_IPSEF", "A47_IPSEF", "A22_IPSEF", "A20_IPSEF", "A21_IPSEF"
+    ];
+
+    const containerCheck = document.getElementById('ipsef-checkboxes');
+    campagneIpsefBase.forEach(camp => {
+        const div = document.createElement('div');
+        div.innerHTML = `<label><input type="checkbox" value="${camp}" checked onchange="checkStato()"> ${camp}</label>`;
+        containerCheck.appendChild(div);
+    });
+
+    const ordineCorsiWorkspace = ["LM51", "L19", "L28", "Brand + Retargeting", "LMG01", "LM47", "Master", "L18", "L24", "LM77", "L8", "LM85", "L22", "Autovalutati"];
+    let storicoDinamico = {};
+
+    let datiMetaRaw = null, datiGoogleRaw = null, datiCrmRaw = null, matriceCopiaIncolla = [];
+    let meseRilevato = "Mese corrente";
+    let chiaveMoM = "";
+    let chiaveYoY = "";
+
+    const PUBLISHED_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?output=csv";
+    
+    function caricaStoricoDaGoogleSheets() {
+        fetch(PUBLISHED_URL)
+            .then(response => {
+                if (!response.ok) throw new Error("Risposta server KO");
+                return response.text();
+            })
+            .then(testoCsv => {
+                Papa.parse(testoCsv, {
+                    header: false,
+                    skipEmptyLines: 'greedy',
+                    complete: function(results) {
+                        mappaDatiFoglioStorico(results.data);
+                        document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud sincronizzato con successo dal tuo Google Sheets!";
+                    }
+                });
+            })
+            .catch(err => {
+                document.getElementById('cloud-status').style.background = "#fff0f0";
+                document.getElementById('cloud-status').style.borderColor = "#dc3545";
+                document.getElementById('cloud-status').style.color = "#dc3545";
+                document.getElementById('cloud-status').innerHTML = "⚠️ Errore Cloud: " + err.message;
+            });
+    }
+
+    function mappaDatiFoglioStorico(righe) {
+        let bloccoCorrenteMese = "";
+        let sezioneAttiva = "";
+
+        righe.forEach(riga => {
+            if (!riga || riga.length === 0 || !riga[0]) return;
+            let cellaIniziale = riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ');
+
+            if (cellaIniziale.includes("2024") || cellaIniziale.includes("2025") || cellaIniziale.includes("2026") || cellaIniziale.includes("2027")) {
+                let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+                let mFound = mesiNomi.find(m => cellaIniziale.includes(m));
+                let aFound = ["2024", "2025", "2026", "2027"].find(a => cellaIniziale.includes(a));
+                
+                if (mFound && aFound) {
+                    bloccoCorrenteMese = mFound + aFound;
+                    storicoDinamico[bloccoCorrenteMese] = { 
+                        kpi: { spesa: 0, lead: 0, cpl: 0 }, 
+                        google: { spesa: 0, conv: 0, cpc: 0 }, 
+                        meta: { spesa: 0, lead: 0, cpl: 0 }, 
+                        ipsef: { r1_spesa: 0, r1_lead: 0, r1_cpl: 0, r4_spesa: 0, r4_lead: 0, r4_cpl: 0, r7_spesa: 0, r7_lead: 0, r7_cpl: 0, tot_spesa: 0, tot_lead: 0, tot_cpl: 0 }, 
+                        ssml: { spesa: 0, lead: 0, cpl: 0 }, 
+                        corsi: {} 
+                    };
+                    sezioneAttiva = "KPI_GENERALE";
+                    return;
+                }
+            }
+
+            let cLow = cellaIniziale.toLowerCase();
+            if (cLow.includes("corso")) { sezioneAttiva = "CORSI_TABELLA"; return; }
+            if (cLow.includes("google ads performance")) { sezioneAttiva = "GOOGLE_PERF"; return; }
+            if (cLow.includes("meta ads performance")) { sezioneAttiva = "META_PERF"; return; }
+            if (cLow.includes("kpi ipsef")) { sezioneAttiva = "IPSEF_PERF"; return; }
+            if (cLow.includes("kpi ssml")) { sezioneAttiva = "SSML_PERF"; return; }
+
+            if (bloccoCorrenteMese && storicoDinamico[bloccoCorrenteMese]) {
+                let m = storicoDinamico[bloccoCorrenteMese];
+                let val = riga[1] ? pulisciNumero(riga[1]) : 0;
+
+                if (sezioneAttiva === "KPI_GENERALE") {
+                    if (cLow.includes("investimento")) m.kpi.spesa = val;
+                    if (cLow.includes("lead totali")) m.kpi.lead = val;
+                    if (cLow.includes("costo per lead")) m.kpi.cpl = val;
+                }
+                else if (sezioneAttiva === "CORSI_TABELLA" && !cLow.includes("totale")) {
+                    let corsoCodice = riga[0].toString().trim().toUpperCase();
+                    m.corsi[corsoCodice] = riga[3] ? pulisciNumero(riga[3]) : 0;
+                }
+                else if (sezioneAttiva === "GOOGLE_PERF") {
+                    if (cLow.includes("investimento")) m.google.spesa = val;
+                    if (cLow.includes("conversioni")) m.google.conv = val;
+                    if (cLow.includes("costo per conversione")) m.google.cpc = val;
+                }
+                else if (sezioneAttiva === "META_PERF") {
+                    if (cLow.includes("investimento")) m.meta.spesa = val;
+                    if (cLow.includes("lead totali")) m.meta.lead = val;
+                    if (cLow.includes("costo per lead")) m.meta.cpl = val;
+                }
+                else if (sezioneAttiva === "IPSEF_PERF") {
+                    if (cLow.includes("60 cfu")) {
+                        if (cLow.includes("investimento")) m.ipsef.r1_spesa = val;
+                        if (cLow.includes("lead")) m.ipsef.r1_lead = val;
+                        if (cLow.includes("costo")) m.ipsef.r1_cpl = val;
+                    }
+                    else if (cLow.includes("tfa")) {
+                        if (cLow.includes("investimento")) m.ipsef.r4_spesa = val;
+                        if (cLow.includes("lead")) m.ipsef.r4_lead = val;
+                        if (cLow.includes("costo")) m.ipsef.r4_cpl = val;
+                    }
+                    else if (cLow.includes("branding campaigns")) {
+                        if (cLow.includes("investimento")) m.ipsef.r7_spesa = val;
+                        if (cLow.includes("lead")) m.ipsef.r7_lead = val;
+                        if (cLow.includes("costo")) m.ipsef.r7_cpl = val;
+                    }
+                    else if (cLow.includes("totale (crm)") || cLow.includes("investimento publicitario totale")) {
+                        if (cLow.includes("investimento")) m.ipsef.tot_spesa = val;
+                        if (cLow.includes("lead")) m.ipsef.tot_lead = val;
+                        if (cLow.includes("costo")) m.ipsef.tot_cpl = val;
+                    }
+                }
+                else if (sezioneAttiva === "SSML_PERF") {
+                    if (cLow.includes("investimento")) m.ssml.spesa = val;
+                    if (cLow.includes("lead totali")) m.ssml.lead = val;
+                    if (cLow.includes("costo per lead")) m.ssml.cpl = val;
+                }
+            }
+        });
+        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw) costruisciWorkspace();
+    }
+
+    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
+    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
+    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
+
+    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        const badge = document.getElementById(badgeId);
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, badge, isHeaderMode); });
+        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, badge, isHeaderMode); });
+    }
+
+    function handleFile(file, callback, badge, isHeaderMode) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let contenuto = e.target.result;
+
+            if (badge.id === 'badge-google') {
+                let righeGrezze = contenuto.split(/\r?\n/);
+                if (righeGrezze[1] && (righeGrezze[1].includes("2024") || righeGrezze[1].includes("2025") || righeGrezze[1].includes("2026") || righeGrezze[1].includes("2027"))) {
+                    let partiData = righeGrezze[1].split("-");
+                    if (partiData[1]) {
+                        meseRilevato = partiData[1].replace(/"/g, '').trim().toLowerCase();
+                        document.getElementById('main-title').textContent = "Super Aggregatore Workspace - Unifortunato (" + meseRilevato.toUpperCase() + ")";
+                        
+                        let partiMeseAnno = meseRilevato.split(" ");
+                        let nMese = partiMeseAnno[0];
+                        let aCorr = parseInt(partiMeseAnno[1]);
+                        let elencoMesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+                        let idxC = elencoMesi.indexOf(nMese);
+                        let idxP = idxC === 0 ? 11 : idxC - 1;
+                        let aPrec = idxC === 0 ? aCorr - 1 : aCorr;
+                        
+                        chiaveMoM = elencoMesi[idxP] + aPrec;
+                        chiaveYoY = nMese + (aCorr - 1);
+                    }
+                }
+
+                let indiceTabella = righeGrezze.findIndex(riga => riga.toLowerCase().includes("campagna") || riga.toLowerCase().includes("campaign") || riga.toLowerCase().includes("stato della campagna"));
+                if (indiceTabella !== -1) righeGrezze = righeGrezze.slice(indiceTabella);
+                contenuto = righeGrezze.join("\n");
+            }
+
+            Papa.parse(contenuto, {
+                header: isHeaderMode,
+                skipEmptyLines: 'greedy',
+                complete: function(results) { 
+                    badge.textContent = "Caricato"; 
+                    badge.classList.add('ready'); 
+                    
+                    if (isHeaderMode) {
+                        let puliti = results.data.map(obj => {
+                            let nuovoObj = {};
+                            for (let key in obj) {
+                                let chiavePulita = key.replace(/"/g, '').trim();
+                                nuovoObj[chiavePulita] = obj[key];
+                            }
+                            return nuovoObj;
+                        });
+                        callback(puliti);
+                    } else {
+                        callback(results.data);
+                    }
+                }
+            });
+        };
+        reader.readAsText(file, "UTF-8");
+    }
+
+    function pulisciNumero(valore) {
+        if (!valore) return 0;
+        let pulito = valore.toString().replace(/"/g, '').replace(/[^0-9,.-]/g, '').trim();
+        let n = parseFloat(pulito);
+        if (isNaN(n)) { pulito = pulito.replace(',', '.'); n = parseFloat(pulito); }
+        return isNaN(n) ? 0 : n;
+    }
+
+    function checkStato() {
+        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw) {
+            costruisciWorkspace();
+            document.getElementById('copy-btn').style.display = 'block';
+            document.getElementById('preview').style.display = 'block';
+        }
+    }
+
+    function formatPct(valore) {
+        if(valore === 0 || isNaN(valore) || !isFinite(valore)) return "0,00%";
+        return (valore > 0 ? "+" : "") + (valore * 100).toFixed(2).replace('.', ',') + "%";
+    }
+
+    function costruisciWorkspace() {
+        matriceCopiaIncolla = [];
+
+        let sMoM = storicoDinamico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, r4_spesa:0, r4_lead:0, r4_cpl:0, r7_spesa:0, r7_lead:0, r7_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
+        let sYoY = storicoDinamico[chiaveYoY] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, r4_spesa:0, r4_lead:0, r4_cpl:0, r7_spesa:0, r7_lead:0, r7_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
+
+        // --- 1. PROCESSO DISTRIBUZIONE LEAD CRM ---
+        const leadPerCorsoCRM = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
+        let ipsefR1Lead = 0, ipsefR4Lead = 0, ipsefR7Lead = 0, ssmlLeadTotali = 0;
+        const checkboxSelezionate = Array.from(document.querySelectorAll('#ipsef-checkboxes input:checked')).map(cb => cb.value.toUpperCase());
+
+        datiCrmRaw.forEach(riga => {
+            let nomeCamp = riga["Campagna"] || ""; if(!nomeCamp) return;
+            nomeCamp = nomeCamp.replace("Campaigns::::", "").trim();
+            const t = nomeCamp.toUpperCase();
+
+            if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
+
+            if (t.includes("SSML")) { ssmlLeadTotali += 1; } 
+            else if (t.includes("SOSTEGNO_25") || t.includes("TFA")) { ipsefR4Lead += 1; }
+            else if (t.includes("IPSEF") && !t.includes("BRAND")) { if (checkboxSelezionate.some(c => t.includes(c))) ipsefR1Lead += 1; }
+            else if (t.includes("IPSEF") && t.includes("BRAND")) { ipsefR7Lead += 1; } 
+            else {
+                if (t.includes("AUTOVALUTAZIONE")) { leadPerCorsoCRM["Autovalutati"] += 1; } 
+                else if (t.includes("MASTER") || t.includes("ART.13") || t.includes("CONTATTI SITO WEB")) {} 
+                else if (t.includes("BRAND") || t.includes("RETARGETING")) { leadPerCorsoCRM["Brand + Retargeting"] += 1; } 
+                else {
+                    const match = nomeCamp.match(/(LMG\d+|LM\d+|L\d+)/i);
+                    if (match) { const codice = match[0].toUpperCase(); if (leadPerCorsoCRM[codice] !== undefined) leadPerCorsoCRM[codice] += 1; }
+                }
+            }
+        });
+
+        // --- 2. ELABORAZIONE SPESA GOOGLE ADS ---
+        let gSpesaBranding = 0, gConvTotali = 0, googleIpsefSpesaAssoluta = 0, googleIpsefLeadAssoluti = 0;
+        datiGoogleRaw.slice(1).forEach(riga => {
+            if (!riga || riga.length < 18) return;
+            if ((riga[0] ? riga[0].trim() : "") === "Attivata") {
+                const camp = riga[1]; const spesa = pulisciNumero(riga[12]); const conv = pulisciNumero(riga[17]); const t = camp.toUpperCase();
+                if (t.includes("BRANDING")) gSpesaBranding += spesa;
+                gConvTotali += conv;
+                if (t.includes("IPSEF") && !t.includes("THROUGHPLAY") && !t.includes("TRAFFICO")) { googleIpsefSpesaAssoluta += spesa; googleIpsefLeadAssoluti += conv; }
+            }
+        });
+
+        // --- 3. ELABORAZIONE SPESA META ADS ---
+        const spesaPerCorsoMeta = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
+        let mSpesaFiltrataTot = 0, mLeadFiltratiTot = 0, ipsefR1Spesa = googleIpsefSpesaAssoluta, ipsefR4Spesa = 0, ipsefR7Spesa = 0, ssmlSpesaAssoluta = 0, ssmlLeadMetaAssoluti = 0;
+
+        datiMetaRaw.forEach(riga => {
+            let camp = riga["Nome della campagna"]; if (!camp) return;
+            const t = camp.toUpperCase(), spesa = pulisciNumero(riga["Importo speso (EUR)"]), ris = pulisciNumero(riga["Risultati"]);
+            if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
+
+            if (!t.includes("IPSEF") && !t.includes("SSML")) { mSpesaFiltrataTot += spesa; mLeadFiltratiTot += ris; }
+            if (!t.includes("IPSEF") && !t.includes("SSML")) {
+                const match = camp.match(/(LMG\d+|LM\d+|L\d+)/i);
+                if (t.includes("BRANDING CAMPAIGN (+ AUTOVALUTAZIONE)")) { spesaPerCorsoMeta["Brand + Retargeting"] += (spesa * (80 / 120)); spesaPerCorsoMeta["Autovalutati"] += (spesa * (40 / 120)); }
+                else if (match) { const codice = match[0].toUpperCase(); if (spesaPerCorsoMeta[codice] !== undefined) spesaPerCorsoMeta[codice] += spesa; } 
+                else if (t.includes("AUTOVALUTAZIONE")) { spesaPerCorsoMeta["Autovalutati"] += spesa; } 
+                else if (t.includes("RETARGETING") || t.includes("BRAND")) { spesaPerCorsoMeta["Brand + Retargeting"] += spesa; }
+            }
+            if (t.includes("IPSEF")) {
+                if (t.match(/\d+/) && !t.includes("TFA") && !t.includes("BAU")) ipsefR1Spesa += spesa;
+                if (t.includes("TFA")) ipsefR4Spesa += spesa;
+                if (t.includes("BAU")) ipsefR7Spesa += spesa;
+            }
+            if (t.includes("SSML")) { ssmlSpesaAssoluta += spesa; ssmlLeadMetaAssoluti += ris; }
+        });
+        spesaPerCorsoMeta["Brand + Retargeting"] += gSpesaBranding;
+
+        // --- 4. OUTPUT ---
+        let totaleSpesaCorsi = Object.values(spesaPerCorsoMeta).reduce((a, b) => a + b, 0);
+        let totaleLeadCorsi = Object.values(leadPerCorsoCRM).reduce((a, b) => a + b, 0);
+        let cplGlobale = totaleLeadCorsi > 0 ? (totaleSpesaCorsi / totaleLeadCorsi) : 0;
+
+        matriceCopiaIncolla.push([meseRilevato.toLowerCase(), "", "", ""]);
+        matriceCopiaIncolla.push(["KPI", "DATI", "Δ MoM", "Δ YoY"]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + totaleSpesaCorsi.toFixed(2).replace('.', ','), formatPct(sMoM.kpi.spesa ? (totaleSpesaCorsi / sMoM.kpi.spesa) - 1 : 0), formatPct(sYoY.kpi.spesa ? (totaleSpesaCorsi / sYoY.kpi.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(totaleLeadCorsi), formatPct(sMoM.kpi.lead ? (totaleLeadCorsi / sMoM.kpi.lead) - 1 : 0), formatPct(sYoY.kpi.lead ? (totaleLeadCorsi / sYoY.kpi.lead) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Lead (CRM)", "€ " + cplGlobale.toFixed(2).replace('.', ','), formatPct(sMoM.kpi.cpl ? (cplGlobale / sMoM.kpi.cpl) - 1 : 0), formatPct(sYoY.kpi.cpl ? (cplGlobale / sYoY.kpi.cpl) - 1 : 0)]);
+        matriceCopiaIncolla.push(["", "", "", ""]);
+
+        matriceCopiaIncolla.push(["CORSO", "SPESA", "LEAD CRM", "COSTO PER LEAD (CRM)", "Δ MoM"]);
+        ordineCorsiWorkspace.forEach(corso => {
+            let spesa = spesaPerCorsoMeta[corso], lead = leadPerCorsoCRM[corso], cpl = lead > 0 ? (spesa / lead) : 0, stPre = sMoM.corsi[corso] || 0;
+            matriceCopiaIncolla.push([corso, "€ " + spesa.toFixed(2).replace('.', ','), lead === 0 ? "-" : Math.round(lead), lead === 0 ? (spesa > 0 ? "#DIV/0!" : "-") : "€ " + cpl.toFixed(2).replace('.', ','), lead === 0 || stPre === 0 ? "-" : formatPct((cpl / stPre) - 1)]);
+        });
+        matriceCopiaIncolla.push(["TOTALE", "€ " + totaleSpesaCorsi.toFixed(2).replace('.', ','), Math.round(totaleLeadCorsi), "€ " + cplGlobale.toFixed(2).replace('.', ','), formatPct(sMoM.kpi.cpl ? (cplGlobale / sMoM.kpi.cpl) - 1 : 0)]);
+        matriceCopiaIncolla.push(["", "", "", ""]);
+
+        let cpcGoogle = gConvTotali > 0 ? (gSpesaBranding / gConvTotali) : 0;
+        matriceCopiaIncolla.push(["GOOGLE ADS PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + gSpesaBranding.toFixed(2).replace('.', ','), formatPct(sMoM.google.spesa ? (gSpesaBranding / sMoM.google.spesa) - 1 : 0), formatPct(sYoY.google.spesa ? (gSpesaBranding / sYoY.google.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Conversioni", Math.round(gConvTotali), formatPct(sMoM.google.conv ? (gConvTotali / sMoM.google.conv) - 1 : 0), formatPct(sYoY.google.conv ? (gConvTotali / sYoY.google.conv) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Conversione", "€ " + cpcGoogle.toFixed(2).replace('.', ','), formatPct(sMoM.google.cpc ? (cpcGoogle / sMoM.google.cpc) - 1 : 0), formatPct(sYoY.google.cpc ? (cpcGoogle / sYoY.google.cpc) - 1 : 0)]);
+        matriceCopiaIncolla.push(["", "", "", ""]);
+
+        let cplMeta = mLeadFiltratiTot > 0 ? (mSpesaFiltrataTot / mLeadFiltratiTot) : 0;
+        matriceCopiaIncolla.push(["META ADS PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + mSpesaFiltrataTot.toFixed(2).replace('.', ','), formatPct(sMoM.meta.spesa ? (mSpesaFiltrataTot / sMoM.meta.spesa) - 1 : 0), formatPct(sYoY.meta.spesa ? (mSpesaFiltrataTot / sYoY.meta.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Lead Totali", Math.round(mLeadFiltratiTot), formatPct(sMoM.meta.lead ? (mLeadFiltratiTot / sMoM.meta.lead) - 1 : 0), formatPct(sYoY.meta.lead ? (mLeadFiltratiTot / sYoY.meta.lead) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(sMoM.meta.cpl ? (cplMeta / sMoM.meta.cpl) - 1 : 0), formatPct(sYoY.meta.cpl ? (cplMeta / sYoY.meta.cpl) - 1 : 0)]);
+        matriceCopiaIncolla.push(["", "", "", ""]);
+
+        let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
+        let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
+        let ipsefR7Cpl = ipsefR7Lead > 0 ? (ipsefR7Spesa / ipsefR7Lead) : 0;
+        let ipsefTotSpesa = ipsefR1Spesa + ipsefR4Spesa + ipsefR7Spesa;
+        let ipsefTotLead = ipsefR1Lead + ipsefR4Lead + ipsefR7Lead;
+        let ipsefTotCpl = ipsefTotLead > 0 ? (ipsefTotSpesa / ipsefTotLead) : 0;
+
+        matriceCopiaIncolla.push(["KPI IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
+        matriceCopiaIncolla.push(["Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r1_spesa ? (ipsefR1Spesa / sMoM.ipsef.r1_spesa) - 1 : 0), formatPct(sYoY.ipsef?.r1_spesa ? (ipsefR1Spesa / sYoY.ipsef.r1_spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Lead 60 CFU - 30 CFU  - Classi di Concorso (CRM)", Math.round(ipsefR1Lead), formatPct(sMoM.ipsef?.r1_lead ? (ipsefR1Lead / sMoM.ipsef.r1_lead) - 1 : 0), formatPct(sYoY.ipsef?.r1_lead ? (ipsefR1Lead / sYoY.ipsef.r1_lead) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Cpl.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r1_cpl ? (ipsefR1Cpl / sMoM.ipsef.r1_cpl) - 1 : 0), formatPct(sYoY.ipsef?.r1_cpl ? (ipsefR1Cpl / sYoY.ipsef.r1_cpl) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento  Publicitario TFA Sostegno (CRM )", "€ " + ipsefR4Spesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r4_spesa ? (ipsefR4Spesa / sMoM.ipsef.r4_spesa) - 1 : 0), "N.D."]);
+        matriceCopiaIncolla.push(["Lead TFA Sostegno (CRM)", Math.round(ipsefR4Lead), formatPct(sMoM.ipsef?.r4_lead ? (ipsefR4Lead / sMoM.ipsef.r4_lead) - 1 : 0), "N.D."]);
+        matriceCopiaIncolla.push(["Costo per Lead TFA Sostegno (CRM)", "€ " + ipsefR4Cpl.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.r4_cpl ? (ipsefR4Cpl / sMoM.ipsef.r4_cpl) - 1 : 0), "N.D."]);
+        matriceCopiaIncolla.push(["Investimento Publicitario Branding Campaigns (CRM)", "€ " + ipsefR7Spesa.toFixed(2).replace('.', ','), "N.D.", formatPct(sYoY.ipsef?.r7_spesa ? (ipsefR7Spesa / sYoY.ipsef.r7_spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Lead Branding Campaigns (CRM)", Math.round(ipsefR7Lead), "N.D.", formatPct(sYoY.ipsef?.r7_lead ? (ipsefR7Lead / sYoY.ipsef.r7_lead) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Lead Branding Campaigns (CRM)", "€ " + ipsefR7Cpl.toFixed(2).replace('.', ','), "N.D.", formatPct(sYoY.ipsef?.r7_cpl ? (ipsefR7Cpl / sYoY.ipsef.r7_cpl) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Investimento Publicitario Totale (CRM)", "€ " + ipsefTotSpesa.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.tot_spesa ? (ipsefTotSpesa / sMoM.ipsef.tot_spesa) - 1 : 0), formatPct(sYoY.ipsef?.tot_spesa ? (ipsefTotSpesa / sYoY.ipsef.tot_spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(ipsefTotLead), formatPct(sMoM.ipsef?.tot_lead ? (ipsefTotLead / sMoM.ipsef.tot_lead) - 1 : 0), formatPct(sYoY.ipsef?.tot_lead ? (ipsefTotLead / sYoY.ipsef.tot_lead) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Lead Totale (CRM)", "€ " + ipsefTotCpl.toFixed(2).replace('.', ','), formatPct(sMoM.ipsef?.tot_cpl ? (ipsefTotCpl / sMoM.ipsef.tot_cpl) - 1 : 0), formatPct(sYoY.ipsef?.tot_cpl ? (ipsefTotCpl / sYoY.ipsef.tot_cpl) - 1 : 0)]);
+        matriceCopiaIncolla.push(["", "", "", ""]);
+
+        let cplSsml = ssmlLeadTotali > 0 ? (ssmlSpesaAssoluta / ssmlLeadTotali) : 0;
+        matriceCopiaIncolla.push(["KPI SSML", "DATI", "Δ MoM", "Δ YoY"]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(sMoM.ssml.spesa ? (ssmlSpesaAssoluta / sMoM.ssml.spesa) - 1 : 0), formatPct(sYoY.ssml.spesa ? (ssmlSpesaAssoluta / sYoY.ssml.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(ssmlLeadTotali), formatPct(sMoM.ssml.lead ? (ssmlLeadTotali / sMoM.ssml.lead) - 1 : 0), formatPct(sYoY.ssml.lead ? (ssmlLeadTotali / sYoY.ssml.lead) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Lead (CRM)", "€ " + cplSsml.toFixed(2).replace('.', ','), formatPct(sMoM.ssml.cpl ? (cplSsml / sMoM.ssml.cpl) - 1 : 0), formatPct(sYoY.ssml.cpl ? (cplSsml / sYoY.ssml.cpl) - 1 : 0)]);
+        matriceCopiaIncolla.push(["", "", "", ""]);
+
+        matriceCopiaIncolla.push(["META ADS SSML", "DATI", "Δ MoM", "Δ YoY"]);
+        matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(sMoM.ssml.spesa ? (ssmlSpesaAssoluta / sMoM.ssml.spesa) - 1 : 0), formatPct(sYoY.ssml.spesa ? (ssmlSpesaAssoluta / sYoY.ssml.spesa) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Lead Totali", Math.round(ssmlLeadMetaAssoluti), formatPct(sMoM.ssml.lead ? (ssmlLeadMetaAssoluti / sMoM.ssml.lead) - 1 : 0), formatPct(sYoY.ssml.lead ? (ssmlLeadMetaAssoluti / sYoY.ssml.lead) - 1 : 0)]);
+        matriceCopiaIncolla.push(["Costo per Lead", "€ " + (ssmlLeadMetaAssoluti > 0 ? ssmlSpesaAssoluta/ssmlLeadMetaAssoluti : 0).toFixed(2).replace('.', ','), formatPct(sMoM.ssml.cpl ? ((ssmlLeadMetaAssoluti > 0 ? ssmlSpesaAssoluta/ssmlLeadMetaAssoluti : 0) / sMoM.ssml.cpl) - 1 : 0), formatPct(sYoY.ssml.cpl ? ((ssmlLeadMetaAssoluti > 0 ? ssmlSpesaAssoluta/ssmlLeadMetaAssoluti : 0) / sYoY.ssml.cpl) - 1 : 0)]);
+
+        renderingAnteprimaASchermo();
+    }
+
+    function renderingAnteprimaASchermo() {
+        let html = "<table>" + matriceCopiaIncolla.map(riga => "<tr>" + riga.map(cella => `<td>${cella}</td>`).join("") + "</tr>").join("") + "</table>";
+        document.getElementById('preview-table-container').innerHTML = html;
+    }
+
+    function copiaBloccoMese() {
+        let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!\n\nI confronti storici MoM e YoY sono stati agganciati via Cloud direttamente dallo Sheet."); });
+    }
+
+    window.onload = function() {
+        caricaStoricoDaGoogleSheets();
+    };
+</script>
+
+</body>
+</html>

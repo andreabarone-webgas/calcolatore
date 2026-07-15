@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Definitiva Convalidata</title>
+    <title>Super Aggregatore Workspace - Versione Stabile Corretta</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -144,8 +144,9 @@
         let bloccoCorrenteMese = "";
         let sottoSezione = "";
 
-        righe.forEach(riga => {
-            if (!riga || riga.length === 0) return;
+        for (let i = 0; i < righe.length; i++) {
+            let riga = righe[i];
+            if (!riga || riga.length === 0) continue;
             let testoInteraRiga = riga.join(" ").toLowerCase().replace(/\s+/g, ' ');
             let c0 = riga[0] ? riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ') : "";
 
@@ -164,18 +165,18 @@
                     corsi: {}
                 };
                 sottoSezione = "KPI_GENERALE";
-                return;
+                continue;
             }
 
-            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) return;
+            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) continue;
             let m = storicoDinamico[bloccoCorrenteMese];
 
-            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
-            if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
-            if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; return; }
-            if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; return; }
-            if (c0.includes("meta ads ipsef performance")) { sottoSezione = "META_IPSEF_PERF"; return; }
-            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
+            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; continue; }
+            if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; continue; }
+            if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; continue; }
+            if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; continue; }
+            if (c0.includes("meta ads ipsef performance")) { sottoSezione = "META_IPSEF_PERF"; continue; }
+            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; continue; }
 
             let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
 
@@ -186,7 +187,6 @@
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
                 let chiaveCorsoPura = riga[0].toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                // CORSI ANCORATI AL CPL DI COLONNA D (riga[3]) PER UN CALCOLO MATEMATICO DEL DELTA PERFETTO
                 m.corsi[chiaveCorsoPura] = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
             else if (sottoSezione === "GOOGLE_PERF") {
@@ -199,7 +199,6 @@
                 if (c0.includes("lead totali")) m.meta.lead = valB;
                 if (c0.includes("costo per lead")) m.meta.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
-            // MAPPA IPSEF SECONDO LE ETICHETTE GRAMMATICALI ESATTE DELLO SCREENSHOT
             else if (sottoSezione === "IPSEF_PERF") {
                 if (c0.includes("investimento publicitario 60 cfu"))  m.ipsef.r1_spesa = valB;
                 if (c0.includes("lead 60 cfu"))                         m.ipsef.r1_lead  = valB;
@@ -225,7 +224,7 @@
                 if (c0.includes("lead totali")) m.ssml.lead = valB;
                 if (c0.includes("costo per lead")) m.ssml.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
-        });
+        }
     }
 
     function pulisciNumero(valore) {
@@ -274,6 +273,7 @@
         input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
     }
 
+    // RIPRISTINATO IL CORRETTO PARSING AD OGGETTI CON HEADER ABILITATO PER I FILE META E CRM
     function handleFile(file, callback, badge, isHeaderMode) {
         if (!file) return;
         const reader = new FileReader();
@@ -288,7 +288,13 @@
             Papa.parse(contenuto, {
                 header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
                     badge.textContent = "Caricato"; badge.classList.add('ready');
-                    callback(res.data);
+                    if (isHeaderMode) {
+                        // Converte le chiavi rimuovendo virgolette e spazi extra di sicurezza
+                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
+                        callback(datiMappati);
+                    } else {
+                        callback(res.data);
+                    }
                 }
             });
         };
@@ -319,8 +325,7 @@
         const checkboxSelezionate = Array.from(document.querySelectorAll('#ipsef-checkboxes input:checked')).map(cb => cb.value.toUpperCase());
 
         datiCrmRaw.forEach(riga => {
-            // Se l'importatore ha creato un oggetto anziché un array, mappa le chiavi in modo sicuro
-            let nomeCamp = riga["Campagna"] || riga[0] || ""; if(!nomeCamp) return;
+            let nomeCamp = riga["Campagna"] || ""; if(!nomeCamp) return;
             nomeCamp = nomeCamp.replace("Campaigns::::", "").trim();
             const t = nomeCamp.toUpperCase();
             if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
@@ -340,20 +345,22 @@
         });
 
         let gSpesaBranding = 0, gConvTotali = 0, googleIpsefSpesaAssoluta = 0;
-        datiGoogleRaw.forEach(riga => {
+        datiGoogleRaw.slice(1).forEach(riga => {
             if (!riga || riga.length < 5) return;
-            const camp = riga[1] || ""; const spesa = pulisciNumero(riga[12]); const conv = pulisciNumero(riga[17]); const t = camp.toUpperCase();
-            if (t.includes("BRANDING")) gSpesaBranding += spesa;
-            gConvTotali += conv;
-            if (t.includes("IPSEF") && !t.includes("THROUGHPLAY") && !t.includes("TRAFFICO")) googleIpsefSpesaAssoluta += spesa;
+            if ((riga[0] ? riga[0].trim() : "") === "Attivata") {
+                const camp = riga[1]; const spesa = pulisciNumero(riga[12]); const conv = pulisciNumero(riga[17]); const t = camp.toUpperCase();
+                if (t.includes("BRANDING")) gSpesaBranding += spesa;
+                gConvTotali += conv;
+                if (t.includes("IPSEF") && !t.includes("THROUGHPLAY") && !t.includes("TRAFFICO")) googleIpsefSpesaAssoluta += spesa;
+            }
         });
 
         const spesaPerCorsoMeta = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
         let mSpesaFiltrataTot = 0, mLeadFiltratiTot = 0, ipsefR1Spesa = googleIpsefSpesaAssoluta, ipsefR4Spesa = 0, ipsefR7Spesa = 0, ssmlSpesaAssoluta = 0;
 
         datiMetaRaw.forEach(riga => {
-            let camp = riga["Nome della campagna"] || riga[0] || ""; if (!camp) return;
-            const t = camp.toUpperCase(), spesa = pulisciNumero(riga["Importo speso (EUR)"] || riga[6]), ris = pulisciNumero(riga["Risultati"] || riga[5]);
+            let camp = riga["Nome della campagna"]; if (!camp) return;
+            const t = camp.toUpperCase(), spesa = pulisciNumero(riga["Importo speso (EUR)"]), ris = pulisciNumero(riga["Risultati"]);
             if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
             if (!t.includes("IPSEF") && !t.includes("SSML")) { mSpesaFiltrataTot += spesa; mLeadFiltratiTot += ris; }
             if (!t.includes("IPSEF") && !t.includes("SSML")) {

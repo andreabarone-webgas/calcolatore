@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Fix Finale IPSEF</title>
+    <title>Super Aggregatore Workspace - Soluzione Definitiva Allineata</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -155,7 +155,7 @@
             
             if (mFound && aFound && (testoInteraRiga.includes("kpi") || riga.length < 5 || testoInteraRiga.match(new RegExp(mFound + "\\s+" + aFound)) )) {
                 bloccoCorrenteMese = mFound + aFound;
-                storicoDinamico[bloccoCorrenteMese] = {
+                storicoDinamico[bloccoCorrenteMese] = m = {
                     kpi: { spesa: 0, lead: 0, cpl: 0 },
                     google: { spesa: 0, conv: 0, cpc: 0 },
                     meta: { spesa: 0, lead: 0, cpl: 0 },
@@ -174,7 +174,6 @@
             if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
             if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; return; }
             if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; return; }
-            // ALLINEAMENTO PERFETTO CON LO SCREENSHOT: "meta ads ipsef" senza performance finale
             if (c0.includes("meta ads ipsef") || c0.includes("meta ad8 ipsef")) { sottoSezione = "META_IPSEF_PERF"; return; }
             if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
 
@@ -200,7 +199,6 @@
                 if (c0.includes("costo per lead")) m.meta.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
             else if (sottoSezione === "IPSEF_PERF") {
-                // Lettura diretta specchiata sui testi reali
                 if (c0.includes("investimento publicitario 60 cfu"))  m.ipsef.r1_spesa = valB;
                 if (c0.includes("lead 60 cfu"))                         m.ipsef.r1_lead  = valB;
                 if (c0.includes("costo per lead 60 cfu"))               m.ipsef.r1_cpl   = valB;
@@ -413,7 +411,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- KPI IPSEF COMPLESSIVI CON DELTA FUNZIONANTI ---
+        // --- KPI IPSEF COMPLESSIVI ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefR7Cpl = ipsefR7Lead > 0 ? (ipsefR7Spesa / ipsefR7Lead) : 0;
@@ -427,16 +425,16 @@
         matriceCopiaIncolla.push(["Costo per Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR1Cpl, sMoM.ipsef.r1_cpl)), formatPct(calcolaVariazioneSicura(ipsefR1Cpl, sYoY.ipsef.r1_cpl))]);
         matriceCopiaIncolla.push(["Investimento Publicitario TFA Sostegno (CRM )", "€ " + ipsefR4Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR4Spesa, sMoM.ipsef.r4_spesa)), formatPct(calcolaVariazioneSicura(ipsefR4Spesa, sYoY.ipsef.r4_spesa))]);
         matriceCopiaIncolla.push(["Lead TFA Sostegno (CRM)", Math.round(ipsefR4Lead), formatPct(calcolaVariazioneSicura(ipsefR4Lead, sMoM.ipsef.r4_lead)), formatPct(calcolaVariazioneSicura(ipsefR4Lead, sYoY.ipsef.r4_lead))]);
-        matriceCopiaIncolla.push(["Costo per Lead TFA Sostegno (CRM)", "€ " + ipsefR4Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsef4Cpl, sMoM.ipsef.r4_cpl)), formatPct(calcolaVariazioneSicura(ipsefR4Cpl, sYoY.ipsef.r4_cpl))]);
+        matriceCopiaIncolla.push(["Costo per Lead TFA Sostegno (CRM)", "€ " + ipsefR4Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR4Cpl, sMoM.ipsef.r4_cpl)), formatPct(calcolaVariazioneSicura(ipsefR4Cpl, sYoY.ipsef.r4_cpl))]);
         matriceCopiaIncolla.push(["Investimento Publicitario Branding Campaigns (CRM)", "€ " + ipsefR7Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR7Spesa, sMoM.ipsef.r7_spesa)), formatPct(calcolaVariazioneSicura(ipsefR7Spesa, sYoY.ipsef.r7_spesa))]);
         matriceCopiaIncolla.push(["Lead Branding Campaigns (CRM)", Math.round(ipsefR7Lead), formatPct(calcolaVariazioneSicura(ipsefR7Lead, sMoM.ipsef.r7_lead)), formatPct(calcolaVariazioneSicura(ipsefR7Lead, sYoY.ipsef.r7_lead))]);
-        matriceCopiaIncolla.push(["Costo per Lead Branding Campaigns (CRM)", "€ " + ipsefR7Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR7Cpl, sMoM.ipsef.r7_cpl)), formatPct(calcolaVariazioneSicura(ipsefR7Cpl, sYoY.ipsef.r7_cpl))]);
+        matriceCopiaIncolla.push(["Costo per Lead Branding Campaigns (CRM)", "€ " + ipsefR7Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR7Cpl, m.ipsef.r7_cpl)), formatPct(calcolaVariazioneSicura(ipsefR7Cpl, sYoY.ipsef.r7_cpl))]);
         matriceCopiaIncolla.push(["Investimento Publicitario Totale (CRM)", "€ " + ipsefTotSpesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefTotSpesa, sMoM.ipsef.tot_spesa)), formatPct(calcolaVariazioneSicura(ipsefTotSpesa, sYoY.ipsef.tot_spesa))]);
         matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(ipsefTotLead), formatPct(calcolaVariazioneSicura(ipsefTotLead, sMoM.ipsef.tot_lead)), formatPct(calcolaVariazioneSicura(ipsefTotLead, sYoY.ipsef.tot_lead))]);
         matriceCopiaIncolla.push(["Costo per Lead Totale (CRM)", "€ " + ipsefTotCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefTotCpl, sMoM.ipsef.tot_cpl)), formatPct(calcolaVariazioneSicura(ipsefTotCpl, sYoY.ipsef.tot_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- TABELLA META ADS PERFORMANCE DI IPSEF CON CALCOLO ATTIVATO ---
+        // --- TABELLA META ADS IPSEF PERFORMANCE ---
         let ipsefMetaSpesaTotale = ipsefR1Spesa + ipsefR4Spesa + ipsefR7Spesa - googleIpsefSpesaAssoluta; 
         matriceCopiaIncolla.push(["META ADS IPSEF PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Pubblicitario Meta IPSEF", "€ " + ipsefMetaSpesaTotale.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefMetaSpesaTotale, sMoM.ipsef.meta_spesa)), "-"]);

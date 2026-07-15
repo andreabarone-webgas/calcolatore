@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Architettura Processi Isolati</title>
+    <title>Super Aggregatore Workspace - Architettura Stabile Convalidata</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -106,9 +106,8 @@
 
     const ordineCorsiWorkspace = ["LM51", "L19", "L28", "Brand + Retargeting", "LMG01", "LM47", "Master", "L18", "L24", "LM77", "L8", "LM85", "L22", "Autovalutati"];
     
-    // 🗄️ STRUTTURA DELLE CAPIENTI MEMORIE TOTALMENTE SEPARATA E INDIPENDENTE
     let storicoDinamico = {};
-    let storicoIpsefDinamico = {}; // Dizionario Esclusivo Verticale Solo per IPSEF
+    let storicoIpsefDinamico = {}; // Dizionario Isolato Verticale per lo storico IPSEF
 
     let datiMetaRaw = null, datiGoogleRaw = null, datiCrmRaw = null, matriceCopiaIncolla = [];
     let meseRilevato = "";
@@ -159,7 +158,6 @@
             if (mFound && aFound && (testoInteraRiga.includes("kpi") || riga.length < 5 || testoInteraRiga.match(new RegExp(mFound + "\\s+" + aFound)) )) {
                 bloccoCorrenteMese = mFound + aFound;
                 
-                // Inizializza archivio Ateneo + SSML
                 storicoDinamico[bloccoCorrenteMese] = {
                     kpi: { spesa: 0, lead: 0, cpl: 0 },
                     google: { spesa: 0, conv: 0, cpc: 0 },
@@ -168,7 +166,6 @@
                     corsi: {}
                 };
                 
-                // Inizializza sotto-archivio IPSEF isolato a mappatura testuale univoca
                 storicoIpsefDinamico[bloccoCorrenteMese] = {};
                 
                 sottoSezione = "KPI_GENERALE";
@@ -188,7 +185,6 @@
 
             let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
 
-            // STRUTTURA ATENEO E SSML (INALTERATA)
             if (sottoSezione === "KPI_GENERALE") {
                 if (c0.includes("investimento")) m.kpi.spesa = valB;
                 if (c0.includes("lead totali")) m.kpi.lead = valB;
@@ -213,8 +209,7 @@
                 if (c0.includes("lead totali")) m.ssml.lead = valB;
                 if (c0.includes("costo per lead")) m.ssml.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
-            
-            // 🚀 STRUTTURA IPSEF TOTALMENTE STACCATA CON PARSING VERTICALE DI CHIAVE DIRETTA DI COLONNA A
+            // LOGICA VERTICALE ISOLATA PER IPSEF
             else if (sottoSezione === "IPSEF_PERF" || sottoSezione === "META_IPSEF_PERF") {
                 if (riga[0] && riga[1]) {
                     let chiaveTestualeUnica = riga[0].toString().trim().toLowerCase().replace(/\s+/g, '');
@@ -322,7 +317,6 @@
         let sMoM = storicoDinamico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
         let sYoY = storicoDinamico[chiaveYoY] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
         
-        // Estrazione dei dizionari storici IPSEF indipendenti
         let ipsefMoM = storicoIpsefDinamico[chiaveMoM] || null;
         let ipsefYoY = storicoIpsefDinamico[chiaveYoY] || null;
 
@@ -420,7 +414,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- INIZIO BLOCCO LOGICO ISOLATO E AUTONOMO PER IPSEF ---
+        // --- MATEMATICA E RENDER IPSEF TOTALMENTE SEPARATI E PROCESSI STACCATI ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefR7Cpl = ipsefR7Lead > 0 ? (ipsefR7Spesa / ipsefR7Lead) : 0;
@@ -430,7 +424,6 @@
 
         matriceCopiaIncolla.push(["KPI IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         
-        // Mappatura MoM e YoY per singola riga interpellando le etichette esatte pulite della colonna A dello storico Cloud
         matriceCopiaIncolla.push([
             "Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", 
             "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), 
@@ -540,7 +533,7 @@
 
     function copiaBloccoMese() {
         let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
-        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto! Report copiato."); });
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
     }
 
     window.onload = function() {

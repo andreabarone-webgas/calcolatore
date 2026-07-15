@@ -90,7 +90,6 @@
     let meseRilevato = "Mese corrente";
     let chiaveMoM = "";
     let chiaveYoY = "";
-    let storicoPronto = false;
 
     const URL_STORICO_2026 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?gid=1443628327&single=true&output=csv";
     const URL_STORICO_2025 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?gid=1211778185&single=true&output=csv";
@@ -107,18 +106,13 @@
                         .then(csv2025 => {
                             Papa.parse(csv2025, { header: false, skipEmptyLines: 'greedy', complete: function(r2025) {
                                 mappaFoglioInOggettoStorico(r2025.data);
-                                storicoPronto = true;
                                 document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud multi-tab (2026 + 2025) sincronizzato con successo!";
-                                checkStato();
                             }});
                         }).catch(() => { 
-                            storicoPronto = true;
                             document.getElementById('cloud-status').innerHTML = "✅ Storico 2026 sincronizzato."; 
-                            checkStato();
                         });
                 }});
             }).catch(err => {
-                storicoPronto = true;
                 document.getElementById('cloud-status').innerHTML = "⚠️ Esecuzione locale pronta (Storico Cloud offline).";
             });
     }
@@ -225,6 +219,20 @@
         chiaveYoY = nMese + (aCorr - 1);
     }
 
+    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
+    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
+    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
+
+    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        const badge = document.getElementById(badgeId);
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, badge, isHeaderMode); });
+        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, badge, isHeaderMode); });
+    }
+
     function handleFile(file, callback, badge, isHeaderMode) {
         if (!file) return;
         const reader = new FileReader();
@@ -269,7 +277,6 @@
     }
 
     function checkStato() {
-        // Blocco di sicurezza antifallimento: calcola solo se i file fisici e le chiavi temporali del mese sono pronti
         if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") {
             costruisciWorkspace();
             document.getElementById('copy-btn').style.display = 'block';

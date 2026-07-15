@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Fix IPSEF Delta</title>
+    <title>Super Aggregatore Workspace - Convalidato e Completo</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -327,6 +327,7 @@
         return (valore > 0 ? "+" : "") + (valore * 100).toFixed(2).replace('.', ',') + "%";
     }
 
+    // Corretto l'allineamento dei riferimenti MoM e YoY sulle strutture IPSEF
     function costruisciWorkspace() {
         matriceCopiaIncolla = [];
         let sMoM = storicoDinamico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, r4_spesa:0, r4_lead:0, r4_cpl:0, r7_spesa:0, r7_lead:0, r7_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
@@ -433,7 +434,6 @@
         let ipsefTotLead = ipsefR1Lead + ipsefR4Lead + ipsefR7Lead;
         let ipsefTotCpl = ipsefTotLead > 0 ? (ipsefTotSpesa / ipsefTotLead) : 0;
 
-        // FIX DEFINITIVO DELTA IPSEF: Tutti i parametri MoM e YoY ora puntano correttamente all'oggetto sMoM e sYoY storici
         matriceCopiaIncolla.push(["KPI IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, sMoM.ipsef?.r1_spesa)), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, sYoY.ipsef?.r1_spesa))]);
         matriceCopiaIncolla.push(["Lead 60 CFU - 30 CFU  - Classi di Concorso (CRM)", Math.round(ipsefR1Lead), formatPct(calcolaVariazioneSicura(ipsefR1Lead, sMoM.ipsef?.r1_lead)), formatPct(calcolaVariazioneSicura(ipsefR1Lead, sYoY.ipsef?.r1_lead))]);
@@ -468,7 +468,7 @@
 
     function copiaBloccoMese() {
         let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
-        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore Workspace - Report Pronto!"); });
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
     }
 
     window.onload = function() {

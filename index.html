@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Fix YoY Totale</title>
+    <title>Super Aggregatore Workspace - Convalidato e Completo</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -141,7 +141,6 @@
     }
 
     function cercaValoreInTuttaLaRiga(riga) {
-        // Scansiona orizzontalmente gli elementi di una riga per trovare il primo valore numerico popolato
         for (let i = 1; i < riga.length; i++) {
             if (riga[i] && riga[i].toString().trim() !== "") {
                 let n = pulisciNumero(riga[i]);
@@ -152,7 +151,6 @@
     }
 
     function cercaCplSpecifico(riga) {
-        // Cerca specificamente nell'ultima cella popolata o in terza/quarta posizione per allineare il CPL
         if (riga[3] && riga[3].toString().trim() !== "") return pulisciNumero(riga[3]);
         if (riga[2] && riga[2].toString().trim() !== "") return pulisciNumero(riga[2]);
         return cercaValoreInTuttaLaRiga(riga);
@@ -203,7 +201,10 @@
                 if (c0.includes("costo per lead")) m.kpi.cpl = cplOrizzontale;
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
-                m.corsi[riga[0].toString().trim().toUpperCase()] = cplOrizzontale;
+                // Mantiene intatta la dicitura esatta per preservare Brand + Retargeting e Autovalutati
+                let nomeCorsoPulito = riga[0].toString().trim();
+                m.corsi[nomeCorsoPulito] = cplOrizzontale;
+                m.corsi[nomeCorsoPulito.toUpperCase()] = cplOrizzontale;
             }
             else if (sottoSezione === "GOOGLE_PERF") {
                 if (c0.includes("investimento")) m.google.spesa = valoreOrizzontale;
@@ -405,7 +406,9 @@
 
         matriceCopiaIncolla.push(["CORSO", "SPESA", "LEAD CRM", "COSTO PER LEAD (CRM)", "Δ MoM"]);
         ordineCorsiWorkspace.forEach(corso => {
-            let spesa = spesaPerCorsoMeta[corso], lead = leadPerCorsoCRM[corso], cpl = lead > 0 ? (spesa / lead) : 0, stPre = sMoM.corsi[corso] || 0;
+            let spesa = spesaPerCorsoMeta[corso], lead = leadPerCorsoCRM[corso], cpl = lead > 0 ? (spesa / lead) : 0;
+            // Esegue un doppio controllo (sia esatto sia maiuscolo) per sbloccare Brand + Retargeting e Autovalutati
+            let stPre = sMoM.corsi[corso] !== undefined ? sMoM.corsi[corso] : (sMoM.corsi[corso.toUpperCase()] !== undefined ? sMoM.corsi[corso.toUpperCase()] : 0);
             matriceCopiaIncolla.push([corso, "€ " + spesa.toFixed(2).replace('.', ','), lead === 0 ? "-" : Math.round(lead), lead === 0 ? (spesa > 0 ? "#DIV/0!" : "-") : "€ " + cpl.toFixed(2).replace('.', ','), lead === 0 || stPre === 0 ? "-" : formatPct(calcolaVariazioneSicura(cpl, stPre))]);
         });
         matriceCopiaIncolla.push(["TOTALE", "€ " + totaleSpesaCorsi.toFixed(2).replace('.', ','), Math.round(totaleLeadCorsi), "€ " + cplGlobale.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplGlobale, sMoM.kpi.cpl))]);
@@ -450,6 +453,8 @@
         let cplSsml = ssmlLeadTotali > 0 ? (ssmlSpesaAssoluta / ssmlLeadTotali) : 0;
         matriceCopiaIncolla.push(["KPI SSML", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlSpesaAssoluta, sMoM.ssml.spesa)), formatPct(calcolaVariazioneSicura(ssmlSpesaAssoluta, sYoY.ssml.spesa))]);
+        // Ripristinata la tabella Meta Ads di SSML integrata
+        matriceCopiaIncolla.push(["Meta Ads SSML - Investimento Pubblicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlSpesaAssoluta, sMoM.ssml.spesa)), formatPct(calcolaVariazioneSicura(ssmlSpesaAssoluta, sYoY.ssml.spesa))]);
         matriceCopiaIncolla.push(["Lead Totali (CRM)", Math.round(ssmlLeadTotali), formatPct(calcolaVariazioneSicura(ssmlLeadTotali, sMoM.ssml.lead)), formatPct(calcolaVariazioneSicura(ssmlLeadTotali, sYoY.ssml.lead))]);
         matriceCopiaIncolla.push(["Costo per Lead (CRM)", "€ " + cplSsml.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplSsml, sMoM.ssml.cpl)), formatPct(calcolaVariazioneSicura(cplSsml, sYoY.ssml.cpl))]);
 

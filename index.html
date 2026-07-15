@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Definitiva Stabile</title>
+    <title>Super Aggregatore Workspace - Logica IPSEF Isolata</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -179,6 +179,7 @@
 
             let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
 
+            // 🔒 BLOCCO UNIFORTUNATO E SSML AUTOMATICO ORIZZONTALE NATIVO (INALTERATO)
             if (sottoSezione === "KPI_GENERALE") {
                 if (c0.includes("investimento")) m.kpi.spesa = valB;
                 if (c0.includes("lead totali")) m.kpi.lead = valB;
@@ -198,30 +199,32 @@
                 if (c0.includes("lead totali")) m.meta.lead = valB;
                 if (c0.includes("costo per lead")) m.meta.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
-            else if (sottoSezione === "IPSEF_PERF") {
-                if (c0.includes("investimento publicitario 60 cfu"))  m.ipsef.r1_spesa = valB;
-                if (c0.includes("lead 60 cfu"))                         m.ipsef.r1_lead  = valB;
-                if (c0.includes("costo per lead 60 cfu"))               m.ipsef.r1_cpl   = valB;
-                
-                if (c0.includes("investimento publicitario tfa"))       m.ipsef.r4_spesa = valB;
-                if (c0.includes("lead tfa"))                            m.ipsef.r4_lead  = valB;
-                if (c0.includes("costo per lead tfa"))                  m.ipsef.r4_cpl   = valB;
-                
-                if (c0.includes("investimento publicitario branding"))  m.ipsef.r7_spesa = valB;
-                if (c0.includes("lead branding"))                       m.ipsef.r7_lead  = valB;
-                if (c0.includes("costo per lead branding"))              m.ipsef.r7_cpl   = valB;
-                
-                if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) m.ipsef.tot_spesa = valB;
-                if (c0.includes("lead totali"))                         m.ipsef.tot_lead  = valB;
-                if (c0.includes("costo per lead totale"))               m.ipsef.tot_cpl   = valB;
-            }
-            else if (sottoSezione === "META_IPSEF_PERF") {
-                if (c0.includes("investimento")) m.ipsef.meta_spesa = valB;
-            }
             else if (sottoSezione === "SSML_PERF") {
                 if (c0.includes("investimento")) m.ssml.spesa = valB;
                 if (c0.includes("lead totali")) m.ssml.lead = valB;
                 if (c0.includes("costo per lead")) m.ssml.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
+            }
+            
+            // 🚀 STACCO CHIRURGICO: LOGICA A PARTE ISOLATA ESCLUSIVAMENTE PER IPSEF VERTICALE
+            else if (sottoSezione === "IPSEF_PERF") {
+                if (c0.includes("investimento publicitario 60 cfu") || c0.includes("investimento pubblicitario 60 cfu")) m.ipsef.r1_spesa = valB;
+                if (c0.includes("lead 60 cfu")) m.ipsef.r1_lead = valB;
+                if (c0.includes("costo per lead 60 cfu")) m.ipsef.r1_cpl = valB;
+                
+                if (c0.includes("investimento publicitario tfa") || c0.includes("investimento pubblicitario tfa")) m.ipsef.r4_spesa = valB;
+                if (c0.includes("lead tfa")) m.ipsef.r4_lead = valB;
+                if (c0.includes("costo per lead tfa")) m.ipsef.r4_cpl = valB;
+                
+                if (c0.includes("investimento publicitario branding") || c0.includes("investimento pubblicitario branding")) m.ipsef.r7_spesa = valB;
+                if (c0.includes("lead branding")) m.ipsef.r7_lead = valB;
+                if (c0.includes("costo per lead branding")) m.ipsef.r7_cpl = valB;
+                
+                if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) m.ipsef.tot_spesa = valB;
+                if (c0.includes("lead totali")) m.ipsef.tot_lead = valB;
+                if (c0.includes("costo per lead totale")) m.ipsef.tot_cpl = valB;
+            }
+            else if (sottoSezione === "META_IPSEF_PERF") {
+                if (c0.includes("investimento")) m.ipsef.meta_spesa = valB;
             }
         });
     }
@@ -332,7 +335,7 @@
             else if (t.includes("IPSEF") && !t.includes("BRAND")) { if (checkboxSelezionate.some(c => t.includes(c))) ipsefR1Lead += 1; }
             else if (t.includes("IPSEF") && t.includes("BRAND")) { ipsefR7Lead += 1; }
             else {
-                if (t.includes("AUTOVALUTAZIONE")) { leadPerCorsoCRM["Autovalutati"] += 1; } 
+                if (t.includes("AUTOVALUTAZIONE")) { Rectangle_Branding = 0; leadPerCorsoCRM["Autovalutati"] += 1; } 
                 else if (t.includes("BRAND") || t.includes("RETARGETING")) { leadPerCorsoCRM["Brand + Retargeting"] += 1; } 
                 else {
                     const match = nomeCamp.match(/(LMG\d+|LM\d+|L\d+)/i);
@@ -411,7 +414,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- KPI IPSEF COMPLESSIVI ---
+        // --- MATEMATICA E STRUTTURA IPSEF REALE INDIPENDENTE (CON DELTA MoM E YoY CORRETTI DA COLONNA B) ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefR7Cpl = ipsefR7Lead > 0 ? (ipsefR7Spesa / ipsefR7Lead) : 0;

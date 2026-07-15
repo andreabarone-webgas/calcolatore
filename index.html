@@ -107,9 +107,11 @@
                             Papa.parse(csv2025, { header: false, skipEmptyLines: 'greedy', complete: function(r2025) {
                                 mappaFoglioInOggettoStorico(r2025.data);
                                 document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud multi-tab (2026 + 2025) sincronizzato con successo!";
+                                checkStato();
                             }});
                         }).catch(() => { 
                             document.getElementById('cloud-status').innerHTML = "✅ Storico 2026 sincronizzato."; 
+                            checkStato();
                         });
                 }});
             }).catch(err => {
@@ -219,6 +221,7 @@
         chiaveYoY = nMese + (aCorr - 1);
     }
 
+    // Inizializzazione pulita e asincrona dei 3 drop zone
     setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
     setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
     setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
@@ -227,6 +230,7 @@
         const zone = document.getElementById(zoneId);
         const input = document.getElementById(inputId);
         const badge = document.getElementById(badgeId);
+        
         zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
         zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
         zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, badge, isHeaderMode); });
@@ -277,6 +281,7 @@
     }
 
     function checkStato() {
+        // Calcola l'output solo se tutti e 3 i file del mese sono presenti e la chiave temporale è stata definita
         if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") {
             costruisciWorkspace();
             document.getElementById('copy-btn').style.display = 'block';

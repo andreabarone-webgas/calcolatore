@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Stabile Corretta</title>
+    <title>Super Aggregatore Workspace - Versione Corretta Intera</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -144,9 +144,8 @@
         let bloccoCorrenteMese = "";
         let sottoSezione = "";
 
-        for (let i = 0; i < righe.length; i++) {
-            let riga = righe[i];
-            if (!riga || riga.length === 0) continue;
+        righe.forEach(riga => {
+            if (!riga || riga.length === 0) return;
             let testoInteraRiga = riga.join(" ").toLowerCase().replace(/\s+/g, ' ');
             let c0 = riga[0] ? riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ') : "";
 
@@ -165,18 +164,17 @@
                     corsi: {}
                 };
                 sottoSezione = "KPI_GENERALE";
-                continue;
+                return;
             }
 
-            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) continue;
+            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) return;
             let m = storicoDinamico[bloccoCorrenteMese];
 
-            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; continue; }
-            if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; continue; }
-            if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; continue; }
-            if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; continue; }
-            if (c0.includes("meta ads ipsef performance")) { sottoSezione = "META_IPSEF_PERF"; continue; }
-            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; continue; }
+            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
+            if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
+            if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; return; }
+            if (c0.includes("kpi ipsef") || c0.includes("meta ads ipsef performance")) { sottoSezione = "IPSEF_PERF"; return; }
+            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
 
             let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
 
@@ -215,16 +213,15 @@
                 if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) m.ipsef.tot_spesa = valB;
                 if (c0.includes("totale (crm)") && c0.includes("lead")) m.ipsef.tot_lead  = valB;
                 if (c0.includes("costo per lead totale"))               m.ipsef.tot_cpl   = valB;
-            }
-            else if (sottoSezione === "META_IPSEF_PERF") {
-                if (c0.includes("investimento pub")) m.ipsef.meta_spesa = valB;
+                
+                if (c0.includes("investimento pubblicitario meta ipsef")) m.ipsef.meta_spesa = valB;
             }
             else if (sottoSezione === "SSML_PERF") {
                 if (c0.includes("investimento")) m.ssml.spesa = valB;
                 if (c0.includes("lead totali")) m.ssml.lead = valB;
                 if (c0.includes("costo per lead")) m.ssml.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
-        }
+        });
     }
 
     function pulisciNumero(valore) {
@@ -273,7 +270,7 @@
         input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
     }
 
-    // RIPRISTINATO IL CORRETTO PARSING AD OGGETTI CON HEADER ABILITATO PER I FILE META E CRM
+    // STRUTTURA AD OGGETTI COMPLETA RIPRISTINATA AL 100%
     function handleFile(file, callback, badge, isHeaderMode) {
         if (!file) return;
         const reader = new FileReader();
@@ -289,7 +286,6 @@
                 header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
                     badge.textContent = "Caricato"; badge.classList.add('ready');
                     if (isHeaderMode) {
-                        // Converte le chiavi rimuovendo virgolette e spazi extra di sicurezza
                         let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
                         callback(datiMappati);
                     } else {

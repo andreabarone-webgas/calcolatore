@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Unifortunato AUTOMATICO</title>
+    <title>Super Aggregatore Workspace - Ripristino Totale</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese di riferimento dal menu a tendina, poi trascina i tre file richiesti.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -54,7 +54,6 @@
             <option value="ottobre 2026">Ottobre 2026</option>
             <option value="novembre 2026">Novembre 2026</option>
             <option value="dicembre 2026">Dicembre 2026</option>
-            <option value="maggio 2025">Maggio 2025</option>
         </select>
     </div>
 
@@ -77,7 +76,7 @@
     </div>
 
     <div class="config-section">
-        <strong>Filtro dinamico Lead CRM IPSEF (Spunte per inclusione mensile):</strong>
+        <strong>Filtro dinamico Lead CRM IPSEF (Tutte le 26 Classi di Concorso):</strong>
         <div id="ipsef-checkboxes" class="checkbox-grid"></div>
     </div>
 
@@ -90,6 +89,7 @@
 </div>
 
 <script>
+    // Tutte le 26 classi di concorso IPSEF ripristinate integralmente
     const campagneIpsefBase = [
         "Preadesione 30 cfu", "IPSEF 60 CFU", "AA22_IPSEF", "A60_IPSEF", "A28_IPSEF", 
         "IPSEF 30 CFU", "A45_IPSEF", "B20_IPSEF", "A46_IPSEF", "A48_IPSEF", 
@@ -202,26 +202,26 @@
                 if (c0.includes("60 cfu") || c0.includes("classi di concorso")) {
                     if (c0.includes("investimento")) m.ipsef.r1_spesa = numC1;
                     if (c0.includes("lead")) m.ipsef.r1_lead = numC1;
-                    if (c0.includes("costo")) m.ipsef.r1_cpl = numC1;
+                    if (c0.includes("costo")) m.ipsef.r1_cpl = numC3;
                 }
                 else if (c0.includes("tfa sostegno")) {
                     if (c0.includes("investimento")) m.ipsef.r4_spesa = numC1;
                     if (c0.includes("lead")) m.ipsef.r4_lead = numC1;
-                    if (c0.includes("costo")) m.ipsef.r4_cpl = numC1;
+                    if (c0.includes("costo")) m.ipsef.r4_cpl = numC3;
                 }
                 else if (c0.includes("branding campaigns") || c0.includes("branding campaign")) {
                     if (c0.includes("investimento")) m.ipsef.r7_spesa = numC1;
                     if (c0.includes("lead")) m.ipsef.r7_lead = numC1;
-                    if (c0.includes("costo")) m.ipsef.r7_cpl = numC1;
+                    if (c0.includes("costo")) m.ipsef.r7_cpl = numC3;
                 }
                 else if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) m.ipsef.tot_spesa = numC1;
                 else if (c0.includes("totale") && c0.includes("lead")) m.ipsef.tot_lead = numC1;
-                else if (c0.includes("totale") && c0.includes("costo")) m.ipsef.tot_cpl = numC1;
+                else if (c0.includes("totale") && c0.includes("costo")) m.ipsef.tot_cpl = numC3;
             }
             else if (sottoSezione === "SSML_PERF") {
                 if (c0.includes("investimento")) m.ssml.spesa = numC1;
                 if (c0.includes("lead totali")) m.ssml.lead = numC1;
-                if (c0.includes("costo per lead")) m.ssml.cpl = numC1;
+                if (c0.includes("costo per lead")) m.ssml.cpl = numC3;
             }
         });
     }
@@ -310,7 +310,6 @@
         let sMoM = storicoDinamico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, r4_spesa:0, r4_lead:0, r4_cpl:0, r7_spesa:0, r7_lead:0, r7_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
         let sYoY = storicoDinamico[chiaveYoY] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, r4_spesa:0, r4_lead:0, r4_cpl:0, r7_spesa:0, r7_lead:0, r7_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
 
-        // --- 1. PROCESSO DISTRIBUZIONE LEAD CRM COMPLETO CON CLASSI CONCORSO ---
         const leadPerCorsoCRM = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
         let ipsefR1Lead = 0, ipsefR4Lead = 0, ipsefR7Lead = 0, ssmlLeadTotali = 0;
         const checkboxSelezionate = Array.from(document.querySelectorAll('#ipsef-checkboxes input:checked')).map(cb => cb.value.toUpperCase());
@@ -322,7 +321,7 @@
             if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
 
             if (t.includes("SSML")) { ssmlLeadTotali += 1; } 
-            else if (t.includes("SOSTEGNO_25") || t.includes("TFA")) { ipsefR4Lead += 1; }
+            else if (t.includes("SOSTEGNO") || t.includes("TFA")) { ipsefR4Lead += 1; }
             else if (t.includes("IPSEF") && !t.includes("BRAND")) { if (checkboxSelezionate.some(c => t.includes(c))) ipsefR1Lead += 1; }
             else if (t.includes("IPSEF") && t.includes("BRAND")) { ipsefR7Lead += 1; }
             else {
@@ -335,7 +334,6 @@
             }
         });
 
-        // --- 2. GOOGLE ADS ---
         let gSpesaBranding = 0, gConvTotali = 0, googleIpsefSpesaAssoluta = 0;
         datiGoogleRaw.slice(1).forEach(riga => {
             if (!riga || riga.length < 18) return;
@@ -347,7 +345,6 @@
             }
         });
 
-        // --- 3. META ADS ---
         const spesaPerCorsoMeta = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
         let mSpesaFiltrataTot = 0, mLeadFiltratiTot = 0, ipsefR1Spesa = googleIpsefSpesaAssoluta, ipsefR4Spesa = 0, ipsefR7Spesa = 0, ssmlSpesaAssoluta = 0;
 
@@ -364,15 +361,14 @@
                 else if (t.includes("RETARGETING") || t.includes("BRAND")) { spesaPerCorsoMeta["Brand + Retargeting"] += spesa; }
             }
             if (t.includes("IPSEF")) {
-                if (t.match(/\d+/) && !t.includes("TFA") && !t.includes("BAU")) ipsefR1Spesa += spesa;
-                if (t.includes("TFA")) ipsefR4Spesa += spesa;
-                if (t.includes("BAU")) ipsefR7Spesa += spesa;
+                if (t.match(/\d+/) && !t.includes("TFA") && !t.includes("BRAND")) ipsefR1Spesa += spesa;
+                if (t.includes("TFA") || t.includes("SOSTEGNO")) ipsefR4Spesa += spesa;
+                if (t.includes("BRAND")) ipsefR7Spesa += spesa;
             }
             if (t.includes("SSML")) { ssmlSpesaAssoluta += spesa; }
         });
         spesaPerCorsoMeta["Brand + Retargeting"] += gSpesaBranding;
 
-        // --- 4. OUTPUT COMPLETO DI TUTTE LE TABELLE ---
         let totaleSpesaCorsi = Object.values(spesaPerCorsoMeta).reduce((a, b) => a + b, 0);
         let totaleLeadCorsi = Object.values(leadPerCorsoCRM).reduce((a, b) => a + b, 0);
         let cplGlobale = totaleLeadCorsi > 0 ? (totaleSpesaCorsi / totaleLeadCorsi) : 0;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Architettura Stabile Convalidata</title>
+    <title>Super Aggregatore Workspace - Normalizzazione Chiavi IPSEF</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione automatica.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -107,7 +107,7 @@
     const ordineCorsiWorkspace = ["LM51", "L19", "L28", "Brand + Retargeting", "LMG01", "LM47", "Master", "L18", "L24", "LM77", "L8", "LM85", "L22", "Autovalutati"];
     
     let storicoDinamico = {};
-    let storicoIpsefDinamico = {}; // Dizionario Isolato Verticale per lo storico IPSEF
+    let storicoIpsefDinamico = {}; 
 
     let datiMetaRaw = null, datiGoogleRaw = null, datiCrmRaw = null, matriceCopiaIncolla = [];
     let meseRilevato = "";
@@ -142,6 +142,12 @@
         });
     }
 
+    // FUNZIONE DI NORMALIZZAZIONE REGE X AGGRESSIVA DI SICUREZZA
+    function normalizzaEtichettaIpsef(testo) {
+        if (!testo) return "";
+        return testo.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
     function mappaFoglioInOggettoStorico(righe) {
         let bloccoCorrenteMese = "";
         let sottoSezione = "";
@@ -167,7 +173,6 @@
                 };
                 
                 storicoIpsefDinamico[bloccoCorrenteMese] = {};
-                
                 sottoSezione = "KPI_GENERALE";
                 return;
             }
@@ -209,11 +214,11 @@
                 if (c0.includes("lead totali")) m.ssml.lead = valB;
                 if (c0.includes("costo per lead")) m.ssml.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
-            // LOGICA VERTICALE ISOLATA PER IPSEF
+            // ISOLAMENTO IPSEF CON ARCHIVIAZIONE AD ALFABETO PULITO
             else if (sottoSezione === "IPSEF_PERF" || sottoSezione === "META_IPSEF_PERF") {
-                if (riga[0] && riga[1]) {
-                    let chiaveTestualeUnica = riga[0].toString().trim().toLowerCase().replace(/\s+/g, '');
-                    ipsefMem[chiaveTestualeUnica] = valB;
+                if (riga[0]) {
+                    let tokenAlfanumerico = normalizzaEtichettaIpsef(riga[0]);
+                    if (tokenAlfanumerico !== "") ipsefMem[tokenAlfanumerico] = valB;
                 }
             }
         });
@@ -252,43 +257,10 @@
         checkStato();
     }
 
-    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
-    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
-    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
-
-    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
-        const zone = document.getElementById(zoneId);
-        const input = document.getElementById(inputId);
-        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-    }
-
-    function handleFile(file, callback, badge, isHeaderMode) {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            let contenuto = e.target.result;
-            if (badge.id === 'badge-google') {
-                let righeGrezze = contenuto.split(/\r?\n/);
-                let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
-                if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
-                contenuto = righeGrezze.join("\n");
-            }
-            Papa.parse(contenuto, {
-                header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
-                    badge.textContent = "Caricato"; badge.classList.add('ready');
-                    if (isHeaderMode) {
-                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
-                        callback(datiMappati);
-                    } else {
-                        callback(res.data);
-                    }
-                }
-            });
-        };
-        reader.readAsText(file, "UTF-8");
+    function recuperaDatoIpsefStorico(mappaStorica, etichettaGrezza) {
+        if (!mappaStorica) return 0;
+        let tokenCercato = normalizzaEtichettaIpsef(etichettaGrezza);
+        return mappaStorica[tokenCercato] || 0;
     }
 
     function checkStato() {
@@ -303,12 +275,6 @@
     function formatPct(valore) {
         if(valore === 0 || isNaN(valore)) return "0,00%";
         return (valore > 0 ? "+" : "") + (valore * 100).toFixed(2).replace('.', ',') + "%";
-    }
-
-    function recuperaDatoIpsefStorico(mappaStorica, etichettaGrezza) {
-        if (!mappaStorica) return 0;
-        let chiaveCercata = etichettaGrezza.toString().trim().toLowerCase().replace(/\s+/g, '');
-        return mappaStorica[chiaveCercata] || 0;
     }
 
     function costruisciWorkspace() {
@@ -414,7 +380,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- MATEMATICA E RENDER IPSEF TOTALMENTE SEPARATI E PROCESSI STACCATI ---
+        // --- SEZIONE LOGICA TOTALMENTE ISOLATA IPSEF REALE CON INTERROGAZIONE ANTICRASH ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefR7Cpl = ipsefR7Lead > 0 ? (ipsefR7Spesa / ipsefR7Lead) : 0;
@@ -533,7 +499,7 @@
 
     function copiaBloccoMese() {
         let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
-        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto! Blocco mese copiato."); });
     }
 
     window.onload = function() {

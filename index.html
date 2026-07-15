@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Fix IPSEF Cloud</title>
+    <title>Super Aggregatore Workspace - Fix Definitivo IPSEF Delta</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Struttura tabelle bloccata e convalidata. Lettura dello storico IPSEF flessibile ad ampio spettro.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -140,23 +140,6 @@
         });
     }
 
-    // Estrattore di numeri sequenziali all'interno di una riga per scavalcare gli slittamenti di colonne
-    function estraiTuttiINumeriDellaRiga(riga) {
-        let numeriTrovati = [];
-        for (let i = 1; i < riga.length; i++) {
-            if (riga[i] && riga[i].toString().trim() !== "") {
-                let n = pulisciNumero(riga[i]);
-                if (n !== 0) numeriTrovati.push(n);
-            }
-        }
-        // Ritorna un oggetto mappato in modo sicuro o zeri se mancano i dati
-        return {
-            spesa: numeriTrovati[0] || 0,
-            lead: numeriTrovati[1] || 0,
-            cpl: numeriTrovati[2] || 0
-        };
-    }
-
     function mappaFoglioInOggettoStorico(righe) {
         let bloccoCorrenteMese = "";
         let sottoSezione = "";
@@ -190,49 +173,52 @@
             if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
             if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
             if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; return; }
-            if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; return; }
+            if (c0.includes("kpi ipsef") || c0.includes("meta ads ipsef performance")) { sottoSezione = "IPSEF_PERF"; return; }
             if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
 
-            let numeriRiga = estraiTuttiINumeriDellaRiga(riga);
+            let valoreC1 = pulisciNumero(riga[1]);
 
             if (sottoSezione === "KPI_GENERALE") {
-                if (c0.includes("investimento")) m.kpi.spesa = numeriRiga.spesa;
-                if (c0.includes("lead totali")) m.kpi.lead = numeriRiga.spesa;
-                if (c0.includes("costo per lead")) m.kpi.cpl = numeriRiga.spesa;
+                if (c0.includes("investimento")) m.kpi.spesa = valoreC1;
+                if (c0.includes("lead totali")) m.kpi.lead = valoreC1;
+                if (c0.includes("costo per lead")) m.kpi.cpl = pulisciNumero(riga[2] || riga[1]);
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
                 let chiaveCorsoPura = riga[0].toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                m.corsi[chiaveCorsoPura] = numeriRiga.spesa; // per i corsi raccoglie il CPL (primo numero della riga corsi)
+                m.corsi[chiaveCorsoPura] = pulisciNumero(riga[3] || riga[2] || riga[1]);
             }
             else if (sottoSezione === "GOOGLE_PERF") {
-                if (c0.includes("investimento")) m.google.spesa = numeriRiga.spesa;
-                if (c0.includes("conversioni")) m.google.conv = numeriRiga.spesa;
-                if (c0.includes("costo per conversione")) m.google.cpc = numeriRiga.spesa;
+                if (c0.includes("investimento")) m.google.spesa = valoreC1;
+                if (c0.includes("conversioni")) m.google.conv = valoreC1;
+                if (c0.includes("costo per conversione")) m.google.cpc = pulisciNumero(riga[2] || riga[1]);
             }
             else if (sottoSezione === "META_PERF") {
-                if (c0.includes("investimento")) m.meta.spesa = numeriRiga.spesa;
-                if (c0.includes("lead totali")) m.meta.lead = numeriRiga.spesa;
-                if (c0.includes("costo per lead")) m.meta.cpl = numeriRiga.spesa;
+                if (c0.includes("investimento")) m.meta.spesa = valoreC1;
+                if (c0.includes("lead totali")) m.meta.lead = valoreC1;
+                if (c0.includes("costo per lead")) m.meta.cpl = pulisciNumero(riga[2] || riga[1]);
             }
             else if (sottoSezione === "IPSEF_PERF") {
-                // APPLICAZIONE SCANSIONE FLUIDA ORIZZONTALE: Cattura i dati storici IPSEF ovunque essi siano scivolati
-                if (c0.includes("60 cfu") || c0.includes("classi di concorso")) {
-                    m.ipsef.r1_spesa = numeriRiga.spesa; m.ipsef.r1_lead = numeriRiga.lead; m.ipsef.r1_cpl = numeriRiga.cpl;
-                }
-                else if (c0.includes("tfa sostegno")) {
-                    m.ipsef.r4_spesa = numeriRiga.spesa; m.ipsef.r4_lead = numeriRiga.lead; m.ipsef.r4_cpl = numeriRiga.cpl;
-                }
-                else if (c0.includes("branding campaigns") || c0.includes("branding campaign")) {
-                    m.ipsef.r7_spesa = numeriRiga.spesa; m.ipsef.r7_lead = numeriRiga.lead; m.ipsef.r7_cpl = numeriRiga.cpl;
-                }
-                else if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) m.ipsef.tot_spesa = numeriRiga.spesa;
-                else if (c0.includes("totale") && c0.includes("lead")) m.ipsef.tot_lead = numeriRiga.spesa;
-                else if (c0.includes("totale") && c0.includes("costo")) m.ipsef.tot_cpl = numeriRiga.spesa;
+                // LETTURA CHIRURGICA INDIPENDENTE RIGA PER RIGA SENZA INTERSEZIONI DI STRINGHE
+                if (c0.includes("investimento") && c0.includes("60 cfu")) m.ipsef.r1_spesa = valoreC1;
+                if (c0.includes("lead") && c0.includes("60 cfu"))         m.ipsef.r1_lead  = valoreC1;
+                if (c0.includes("costo") && c0.includes("60 cfu"))        m.ipsef.r1_cpl   = valoreC1;
+                
+                if (c0.includes("investimento") && c0.includes("tfa"))    m.ipsef.r4_spesa = valoreC1;
+                if (c0.includes("lead") && c0.includes("tfa"))            m.ipsef.r4_lead  = valoreC1;
+                if (c0.includes("costo") && c0.includes("tfa"))           m.ipsef.r4_cpl   = valoreC1;
+                
+                if (c0.includes("investimento") && c0.includes("branding")) m.ipsef.r7_spesa = valoreC1;
+                if (c0.includes("lead") && c0.includes("branding"))         m.ipsef.r7_lead  = valoreC1;
+                if (c0.includes("costo") && c0.includes("branding"))        m.ipsef.r7_cpl   = valoreC1;
+                
+                if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) m.ipsef.tot_spesa = valoreC1;
+                if (c0.includes("totale") && c0.includes("lead") && !c0.includes("ssml"))     m.ipsef.tot_lead = valoreC1;
+                if (c0.includes("totale") && c0.includes("costo") && !c0.includes("ssml"))    m.ipsef.tot_cpl  = valoreC1;
             }
             else if (sottoSezione === "SSML_PERF") {
-                if (c0.includes("investimento")) m.ssml.spesa = numeriRiga.spesa;
-                if (c0.includes("lead totali")) m.ssml.lead = numeriRiga.spesa;
-                if (c0.includes("costo per lead")) m.ssml.cpl = numeriRiga.spesa;
+                if (c0.includes("investimento")) m.ssml.spesa = valoreC1;
+                if (c0.includes("lead totali")) m.ssml.lead = valoreC1;
+                if (c0.includes("costo per lead")) m.ssml.cpl = valoreC1;
             }
         });
     }
@@ -268,44 +254,6 @@
         chiaveMoM = elencoMesi[idxP] + aPrec;
         chiaveYoY = nMese + (aCorr - 1);
         checkStato();
-    }
-
-    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
-    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
-    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
-
-    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
-        const zone = document.getElementById(zoneId);
-        const input = document.getElementById(inputId);
-        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-    }
-
-    function handleFile(file, callback, badge, isHeaderMode) {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            let contenuto = e.target.result;
-            if (badge.id === 'badge-google') {
-                let righeGrezze = contenuto.split(/\r?\n/);
-                let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
-                if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
-                contenuto = righeGrezze.join("\n");
-            }
-            Papa.parse(contenuto, {
-                header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
-                    badge.textContent = "Caricato"; badge.classList.add('ready');
-                    if (isHeaderMode) {
-                        callback(res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; }));
-                    } else {
-                        callback(res.data);
-                    }
-                }
-            });
-        };
-        reader.readAsText(file, "UTF-8");
     }
 
     function checkStato() {
@@ -421,6 +369,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
+        // --- KPI IPSEF COMPLESSIVI ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefR7Cpl = ipsefR7Lead > 0 ? (ipsefR7Spesa / ipsefR7Lead) : 0;
@@ -428,12 +377,11 @@
         let ipsefTotLead = ipsefR1Lead + ipsefR4Lead + ipsefR7Lead;
         let ipsefTotCpl = ipsefTotLead > 0 ? (ipsefTotSpesa / ipsefTotLead) : 0;
 
-        // --- KPI IPSEF COMPLESSIVI ---
         matriceCopiaIncolla.push(["KPI IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, sMoM.ipsef?.r1_spesa)), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, sYoY.ipsef?.r1_spesa))]);
-        matriceCopiaIncolla.push(["Lead 60 CFU - 30 CFU  - Classi di Concorso (CRM)", Math.round(ipsefR1Lead), formatPct(calcolaVariazioneSicura(ipsefR1Lead, sMoM.ipsef?.r1_lead)), formatPct(calcolaVariazioneSicura(ipsefR1Lead, sYoY.ipsef?.r1_lead))]);
+        matriceCopiaIncolla.push(["Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", Math.round(ipsefR1Lead), formatPct(calcolaVariazioneSicura(ipsefR1Lead, sMoM.ipsef?.r1_lead)), formatPct(calcolaVariazioneSicura(ipsefR1Lead, sYoY.ipsef?.r1_lead))]);
         matriceCopiaIncolla.push(["Costo per Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR1Cpl, sMoM.ipsef?.r1_cpl)), formatPct(calcolaVariazioneSicura(ipsefR1Cpl, sYoY.ipsef?.r1_cpl))]);
-        matriceCopiaIncolla.push(["Investimento  Publicitario TFA Sostegno (CRM )", "€ " + ipsefR4Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR4Spesa, sMoM.ipsef?.r4_spesa)), formatPct(calcolaVariazioneSicura(ipsefR4Spesa, sYoY.ipsef?.r4_spesa))]);
+        matriceCopiaIncolla.push(["Investimento Publicitario TFA Sostegno (CRM )", "€ " + ipsefR4Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR4Spesa, sMoM.ipsef?.r4_spesa)), formatPct(calcolaVariazioneSicura(ipsefR4Spesa, sYoY.ipsef?.r4_spesa))]);
         matriceCopiaIncolla.push(["Lead TFA Sostegno (CRM)", Math.round(ipsefR4Lead), formatPct(calcolaVariazioneSicura(ipsefR4Lead, sMoM.ipsef?.r4_lead)), formatPct(calcolaVariazioneSicura(ipsefR4Lead, sYoY.ipsef?.r4_lead))]);
         matriceCopiaIncolla.push(["Costo per Lead TFA Sostegno (CRM)", "€ " + ipsefR4Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR4Cpl, sMoM.ipsef?.r4_cpl)), formatPct(calcolaVariazioneSicura(ipsefR4Cpl, sYoY.ipsef?.r4_cpl))]);
         matriceCopiaIncolla.push(["Investimento Publicitario Branding Campaigns (CRM)", "€ " + ipsefR7Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR7Spesa, sMoM.ipsef?.r7_spesa)), formatPct(calcolaVariazioneSicura(ipsefR7Spesa, sYoY.ipsef?.r7_spesa))]);
@@ -474,7 +422,7 @@
 
     function copiaBloccoMese() {
         let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
-        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore Workspace - Report Pronto!"); });
     }
 
     window.onload = function() {

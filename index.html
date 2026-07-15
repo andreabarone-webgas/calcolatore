@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Ripristino Totale</title>
+    <title>Super Aggregatore Workspace - Fix Numerico</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'originale calcolo corretto.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -89,7 +89,6 @@
 </div>
 
 <script>
-    // Tutte le 26 classi di concorso IPSEF ripristinate integralmente
     const campagneIpsefBase = [
         "Preadesione 30 cfu", "IPSEF 60 CFU", "AA22_IPSEF", "A60_IPSEF", "A28_IPSEF", 
         "IPSEF 30 CFU", "A45_IPSEF", "B20_IPSEF", "A46_IPSEF", "A48_IPSEF", 
@@ -226,11 +225,25 @@
         });
     }
 
+    // NUOVA FUNZIONE DI PULIZIA: Elimina i punti delle migliaia europei (es. 21.394,84 -> 21394.84)
     function pulisciNumero(valore) {
         if (!valore) return 0;
-        let pulito = valore.toString().replace(/"/g, '').replace(/[^0-9,.-]/g, '').trim();
-        let n = parseFloat(pulito);
-        if (isNaN(n)) { pulito = pulito.replace(',', '.'); n = parseFloat(pulito); }
+        let s = valore.toString().replace(/"/g, '').trim();
+        
+        // Se contiene sia il punto che la virgola (es: 21.394,84), togliamo il punto e trasformiamo la virgola in punto
+        if (s.includes('.') && s.includes(',')) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        } 
+        // Se contiene solo la virgola (es: 21394,84), la trasformiamo in punto decimale
+        else if (s.includes(',')) {
+            s = s.replace(',', '.');
+        }
+        // Se contiene un punto ma sembra un punto delle migliaia (es: tre cifre dopo il punto, tipo 20.170), togliamo il punto
+        else if (s.includes('.') && s.split('.')[1].length === 3) {
+            s = s.replace(/\./g, '');
+        }
+
+        let n = parseFloat(s.replace(/[^0-9.-]/g, ''));
         return isNaN(n) ? 0 : n;
     }
 
@@ -442,7 +455,7 @@
 
     function copiaBloccoMese() {
         let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
-        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore Workspace - Report Pronto!"); });
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
     }
 
     window.onload = function() {

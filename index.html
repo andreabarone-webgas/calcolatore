@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Fix Numerico</title>
+    <title>Super Aggregatore Workspace - Fix YoY Totale</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'originale calcolo corretto.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -140,6 +140,24 @@
         });
     }
 
+    function cercaValoreInTuttaLaRiga(riga) {
+        // Scansiona orizzontalmente gli elementi di una riga per trovare il primo valore numerico popolato
+        for (let i = 1; i < riga.length; i++) {
+            if (riga[i] && riga[i].toString().trim() !== "") {
+                let n = pulisciNumero(riga[i]);
+                if (n !== 0) return n;
+            }
+        }
+        return 0;
+    }
+
+    function cercaCplSpecifico(riga) {
+        // Cerca specificamente nell'ultima cella popolata o in terza/quarta posizione per allineare il CPL
+        if (riga[3] && riga[3].toString().trim() !== "") return pulisciNumero(riga[3]);
+        if (riga[2] && riga[2].toString().trim() !== "") return pulisciNumero(riga[2]);
+        return cercaValoreInTuttaLaRiga(riga);
+    }
+
     function mappaFoglioInOggettoStorico(righe) {
         let bloccoCorrenteMese = "";
         let sottoSezione = "";
@@ -176,73 +194,65 @@
             if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; return; }
             if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
 
-            let numC1 = riga[1] ? pulisciNumero(riga[1]) : 0;
-            let numC3 = riga[3] ? pulisciNumero(riga[3]) : 0;
+            let valoreOrizzontale = cercaValoreInTuttaLaRiga(riga);
+            let cplOrizzontale = cercaCplSpecifico(riga);
 
             if (sottoSezione === "KPI_GENERALE") {
-                if (c0.includes("investimento")) m.kpi.spesa = numC1;
-                if (c0.includes("lead totali")) m.kpi.lead = numC1;
-                if (c0.includes("costo per lead")) m.kpi.cpl = numC1;
+                if (c0.includes("investimento")) m.kpi.spesa = valoreOrizzontale;
+                if (c0.includes("lead totali")) m.kpi.lead = valoreOrizzontale;
+                if (c0.includes("costo per lead")) m.kpi.cpl = cplOrizzontale;
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
-                m.corsi[riga[0].toString().trim().toUpperCase()] = numC3;
+                m.corsi[riga[0].toString().trim().toUpperCase()] = cplOrizzontale;
             }
             else if (sottoSezione === "GOOGLE_PERF") {
-                if (c0.includes("investimento")) m.google.spesa = numC1;
-                if (c0.includes("conversioni")) m.google.conv = numC1;
-                if (c0.includes("costo per conversione")) m.google.cpc = numC1;
+                if (c0.includes("investimento")) m.google.spesa = valoreOrizzontale;
+                if (c0.includes("conversioni")) m.google.conv = valoreOrizzontale;
+                if (c0.includes("costo per conversione")) m.google.cpc = cplOrizzontale;
             }
             else if (sottoSezione === "META_PERF") {
-                if (c0.includes("investimento")) m.meta.spesa = numC1;
-                if (c0.includes("lead totali")) m.meta.lead = numC1;
-                if (c0.includes("costo per lead")) m.meta.cpl = numC1;
+                if (c0.includes("investimento")) m.meta.spesa = valoreOrizzontale;
+                if (c0.includes("lead totali")) m.meta.lead = valoreOrizzontale;
+                if (c0.includes("costo per lead")) m.meta.cpl = cplOrizzontale;
             }
             else if (sottoSezione === "IPSEF_PERF") {
                 if (c0.includes("60 cfu") || c0.includes("classi di concorso")) {
-                    if (c0.includes("investimento")) m.ipsef.r1_spesa = numC1;
-                    if (c0.includes("lead")) m.ipsef.r1_lead = numC1;
-                    if (c0.includes("costo")) m.ipsef.r1_cpl = numC3;
+                    if (c0.includes("investimento")) m.ipsef.r1_spesa = valoreOrizzontale;
+                    if (c0.includes("lead")) m.ipsef.r1_lead = valoreOrizzontale;
+                    if (c0.includes("costo")) m.ipsef.r1_cpl = cplOrizzontale;
                 }
                 else if (c0.includes("tfa sostegno")) {
-                    if (c0.includes("investimento")) m.ipsef.r4_spesa = numC1;
-                    if (c0.includes("lead")) m.ipsef.r4_lead = numC1;
-                    if (c0.includes("costo")) m.ipsef.r4_cpl = numC3;
+                    if (c0.includes("investimento")) m.ipsef.r4_spesa = valoreOrizzontale;
+                    if (c0.includes("lead")) m.ipsef.r4_lead = valoreOrizzontale;
+                    if (c0.includes("costo")) m.ipsef.r4_cpl = cplOrizzontale;
                 }
                 else if (c0.includes("branding campaigns") || c0.includes("branding campaign")) {
-                    if (c0.includes("investimento")) m.ipsef.r7_spesa = numC1;
-                    if (c0.includes("lead")) m.ipsef.r7_lead = numC1;
-                    if (c0.includes("costo")) m.ipsef.r7_cpl = numC3;
+                    if (c0.includes("investimento")) m.ipsef.r7_spesa = valoreOrizzontale;
+                    if (c0.includes("lead")) m.ipsef.r7_lead = valoreOrizzontale;
+                    if (c0.includes("costo")) m.ipsef.r7_cpl = cplOrizzontale;
                 }
-                else if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) m.ipsef.tot_spesa = numC1;
-                else if (c0.includes("totale") && c0.includes("lead")) m.ipsef.tot_lead = numC1;
-                else if (c0.includes("totale") && c0.includes("costo")) m.ipsef.tot_cpl = numC3;
+                else if (c0.includes("pubblicitario totale") || c0.includes("publicitario totale")) m.ipsef.tot_spesa = valoreOrizzontale;
+                else if (c0.includes("totale") && c0.includes("lead")) m.ipsef.tot_lead = valoreOrizzontale;
+                else if (c0.includes("totale") && c0.includes("costo")) m.ipsef.tot_cpl = cplOrizzontale;
             }
             else if (sottoSezione === "SSML_PERF") {
-                if (c0.includes("investimento")) m.ssml.spesa = numC1;
-                if (c0.includes("lead totali")) m.ssml.lead = numC1;
-                if (c0.includes("costo per lead")) m.ssml.cpl = numC3;
+                if (c0.includes("investimento")) m.ssml.spesa = valoreOrizzontale;
+                if (c0.includes("lead totali")) m.ssml.lead = valoreOrizzontale;
+                if (c0.includes("costo per lead")) m.ssml.cpl = cplOrizzontale;
             }
         });
     }
 
-    // NUOVA FUNZIONE DI PULIZIA: Elimina i punti delle migliaia europei (es. 21.394,84 -> 21394.84)
     function pulisciNumero(valore) {
         if (!valore) return 0;
         let s = valore.toString().replace(/"/g, '').trim();
-        
-        // Se contiene sia il punto che la virgola (es: 21.394,84), togliamo il punto e trasformiamo la virgola in punto
         if (s.includes('.') && s.includes(',')) {
             s = s.replace(/\./g, '').replace(',', '.');
-        } 
-        // Se contiene solo la virgola (es: 21394,84), la trasformiamo in punto decimale
-        else if (s.includes(',')) {
+        } else if (s.includes(',')) {
             s = s.replace(',', '.');
-        }
-        // Se contiene un punto ma sembra un punto delle migliaia (es: tre cifre dopo il punto, tipo 20.170), togliamo il punto
-        else if (s.includes('.') && s.split('.')[1].length === 3) {
+        } else if (s.includes('.') && s.split('.')[1].length === 3) {
             s = s.replace(/\./g, '');
         }
-
         let n = parseFloat(s.replace(/[^0-9.-]/g, ''));
         return isNaN(n) ? 0 : n;
     }

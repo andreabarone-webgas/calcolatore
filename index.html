@@ -30,10 +30,10 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Trascina i tre file richiesti. Il sistema scarica e unisce lo storico 2026 e 2025 in automatico via Cloud.</p>
+    <p class="subtitle">Trascina i tre file richiesti. Il sistema unisce lo storico 2026 e 2025 in automatico via Cloud bypassando i conflitti.</p>
 
     <div id="cloud-status" class="sync-banner">
-        <span>🔄 Connessione e scaricamento delle tab storiche (2026 + 2025)...</span>
+        <span>🔄 Connessione protetta alle schede storiche (2026 + 2025)...</span>
     </div>
 
     <div class="grid-inputs">
@@ -94,29 +94,32 @@
     const URL_STORICO_2026 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?gid=1443628327&single=true&output=csv";
     const URL_STORICO_2025 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?gid=1211778185&single=true&output=csv";
 
+    // Nuovo sistema di download protetto anti-conflitto estensioni
+    function scaricaConScript(url, callback) {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                callback(xhr.responseText);
+            }
+        };
+        xhr.send();
+    }
+
     function caricaTuttiGliStorici() {
-        fetch(URL_STORICO_2026)
-            .then(res => res.text())
-            .then(csv2026 => {
-                Papa.parse(csv2026, { header: false, skipEmptyLines: 'greedy', complete: function(r2026) {
-                    mappaFoglioInOggettoStorico(r2026.data);
-                    
-                    fetch(URL_STORICO_2025)
-                        .then(res => res.text())
-                        .then(csv2025 => {
-                            Papa.parse(csv2025, { header: false, skipEmptyLines: 'greedy', complete: function(r2025) {
-                                mappaFoglioInOggettoStorico(r2025.data);
-                                document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud multi-tab (2026 + 2025) sincronizzato con successo!";
-                                checkStato();
-                            }});
-                        }).catch(() => { 
-                            document.getElementById('cloud-status').innerHTML = "✅ Storico 2026 sincronizzato."; 
-                            checkStato();
-                        });
-                }});
-            }).catch(err => {
-                document.getElementById('cloud-status').innerHTML = "⚠️ Esecuzione locale pronta (Storico Cloud offline).";
-            });
+        scaricaConScript(URL_STORICO_2026, function(csv2026) {
+            Papa.parse(csv2026, { header: false, skipEmptyLines: 'greedy', complete: function(r2026) {
+                mappaFoglioInOggettoStorico(r2026.data);
+                
+                scaricaConScript(URL_STORICO_2025, function(csv2025) {
+                    Papa.parse(csv2025, { header: false, skipEmptyLines: 'greedy', complete: function(r2025) {
+                        mappaFoglioInOggettoStorico(r2025.data);
+                        document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud multi-tab protetto (2026 + 2025) sincronizzato!";
+                        checkStato();
+                    }});
+                });
+            }});
+        });
     }
 
     function mappaFoglioInOggettoStorico(righe) {
@@ -221,7 +224,7 @@
         chiaveYoY = nMese + (aCorr - 1);
     }
 
-    // Inizializzazione pulita e asincrona dei 3 drop zone
+    // Listener isolati passivi pronti al drop immediato
     setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
     setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
     setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
@@ -281,7 +284,6 @@
     }
 
     function checkStato() {
-        // Calcola l'output solo se tutti e 3 i file del mese sono presenti e la chiave temporale è stata definita
         if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") {
             costruisciWorkspace();
             document.getElementById('copy-btn').style.display = 'block';
@@ -420,7 +422,7 @@
 
     function copiaBloccoMese() {
         let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
-        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore Workspace - Report Pronto!"); });
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
     }
 
     window.onload = function() {

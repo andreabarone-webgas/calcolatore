@@ -119,7 +119,7 @@
                 }});
             }).catch(err => {
                 storicoPronto = true;
-                document.getElementById('cloud-status').innerHTML = "⚠️ Esecuzione pronta (Storico Cloud offline).";
+                document.getElementById('cloud-status').innerHTML = "⚠️ Esecuzione locale pronta (Storico Cloud offline).";
             });
     }
 
@@ -269,7 +269,8 @@
     }
 
     function checkStato() {
-        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw) {
+        // Blocco di sicurezza antifallimento: calcola solo se i file fisici e le chiavi temporali del mese sono pronti
+        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") {
             costruisciWorkspace();
             document.getElementById('copy-btn').style.display = 'block';
             document.getElementById('preview').style.display = 'block';
@@ -407,7 +408,7 @@
 
     function copiaBloccoMese() {
         let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
-        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore Workspace - Report Pronto!"); });
     }
 
     window.onload = function() {

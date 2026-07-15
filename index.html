@@ -30,15 +30,15 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Trascina i tre file richiesti. Il sistema unisce lo storico 2026 e 2025 in automatico via Cloud bypassando i conflitti.</p>
+    <p class="subtitle">Trascina i tre file richiesti. Lo storico viene sincronizzato in background, con scansione totale delle righe (anti-errore celle unite).</p>
 
     <div id="cloud-status" class="sync-banner">
-        <span>🔄 Connessione protetta alle schede storiche (2026 + 2025)...</span>
+        <span>🔄 Connessione allo storico Cloud in corso...</span>
     </div>
 
     <div class="grid-inputs">
         <div id="drop-meta" class="drop-zone" onclick="document.getElementById('file-meta').click()">
-            <p><strong>1. Report META (Ateneo)</strong><br>Trascina il CSV delle performance</p>
+            <p><strong>1. Report META ADS (Complessivo)</strong><br>Trascina il CSV delle performance</p>
             <input type="file" id="file-meta" accept=".csv" style="display:none">
             <span id="badge-meta" class="status-badge">Mancante</span>
         </div>
@@ -55,7 +55,7 @@
     </div>
 
     <div class="config-section">
-        <strong>Filtro dinamico Lead CRM IPSEF (Spunte per inclusione mensili):</strong>
+        <strong>Filtro dinamico Lead CRM IPSEF (Spunte per inclusioni mensili):</strong>
         <div id="ipsef-checkboxes" class="checkbox-grid"></div>
     </div>
 
@@ -84,8 +84,8 @@
     });
 
     const ordineCorsiWorkspace = ["LM51", "L19", "L28", "Brand + Retargeting", "LMG01", "LM47", "Master", "L18", "L24", "LM77", "L8", "LM85", "L22", "Autovalutati"];
-    
-    let storico = {};
+    let storicoDinamico = {};
+
     let datiMetaRaw = null, datiGoogleRaw = null, datiCrmRaw = null, matriceCopiaIncolla = [];
     let meseRilevato = "Mese corrente";
     let chiaveMoM = "";
@@ -94,7 +94,6 @@
     const URL_STORICO_2026 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?gid=1443628327&single=true&output=csv";
     const URL_STORICO_2025 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?gid=1211778185&single=true&output=csv";
 
-    // Nuovo sistema di download protetto anti-conflitto estensioni
     function scaricaConScript(url, callback) {
         const xhr = new XMLHttpRequest();
         xhr.open("GET", url, true);
@@ -114,7 +113,7 @@
                 scaricaConScript(URL_STORICO_2025, function(csv2025) {
                     Papa.parse(csv2025, { header: false, skipEmptyLines: 'greedy', complete: function(r2025) {
                         mappaFoglioInOggettoStorico(r2025.data);
-                        document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud multi-tab protetto (2026 + 2025) sincronizzato!";
+                        document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud sincronizzato con successo dal tuo Google Sheets!";
                         checkStato();
                     }});
                 });
@@ -123,33 +122,37 @@
     }
 
     function mappaFoglioInOggettoStorico(righe) {
-        let bloccoMeseAttivo = "";
+        let bloccoCorrenteMese = "";
         let sottoSezione = "";
 
         righe.forEach(riga => {
-            if (!riga || riga.length === 0 || !riga[0]) return;
-            let c0 = riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ');
+            if (!riga || riga.length === 0) return;
+            
+            // Uniamo tutta la riga in una stringa di testo per cercare il mese OVUNQUE (risolve il bug delle celle non unite)
+            let testoInteraRiga = riga.join(" ").toLowerCase().replace(/\s+/g, ' ');
+            let c0 = riga[0] ? riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ') : "";
 
             let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
-            let mFound = mesiNomi.find(m => c0.includes(m));
-            let aFound = ["2024", "2025", "2026", "2027"].find(a => c0.includes(a));
-
-            if (mFound && aFound) {
-                bloccoMeseAttivo = mFound + aFound; 
-                storico[bloccoMeseAttivo] = {
+            let mFound = mesiNomi.find(m => testoInteraRiga.includes(m));
+            let aFound = ["2024", "2025", "2026", "2027"].find(a => testoInteraRiga.includes(a));
+            
+            // Se troviamo mese e anno in QUALSIASI colonna della riga, facciamo scattare il blocco
+            if (mFound && aFound && (testoInteraRiga.includes("kpi") || riga.length < 5 || testoInteraRiga.match(new RegExp(mFound + "\\s+" + aFound)) )) {
+                bloccoCorrenteMese = mFound + aFound;
+                storicoDinamico[bloccoCorrenteMese] = {
                     kpi: { spesa: 0, lead: 0, cpl: 0 },
-                    corsi: {},
                     google: { spesa: 0, conv: 0, cpc: 0 },
                     meta: { spesa: 0, lead: 0, cpl: 0 },
                     ipsef: { r1_spesa: 0, r1_lead: 0, r1_cpl: 0, tot_spesa: 0, tot_lead: 0, tot_cpl: 0 },
-                    ssml: { spesa: 0, lead: 0, cpl: 0 }
+                    ssml: { spesa: 0, lead: 0, cpl: 0 },
+                    corsi: {}
                 };
                 sottoSezione = "KPI_GENERALE";
                 return;
             }
 
-            if (!bloccoMeseAttivo || !storico[bloccoMeseAttivo]) return;
-            let m = storico[bloccoMeseAttivo];
+            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) return;
+            let m = storicoDinamico[bloccoCorrenteMese];
 
             if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
             if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
@@ -165,7 +168,7 @@
                 if (c0.includes("lead totali")) m.kpi.lead = numC1;
                 if (c0.includes("costo per lead")) m.kpi.cpl = numC1;
             }
-            else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale")) {
+            else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
                 let corsoCodice = riga[0].toString().trim().toUpperCase();
                 m.corsi[corsoCodice] = numC3;
             }
@@ -224,7 +227,6 @@
         chiaveYoY = nMese + (aCorr - 1);
     }
 
-    // Listener isolati passivi pronti al drop immediato
     setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
     setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
     setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
@@ -304,8 +306,8 @@
     function costruisciWorkspace() {
         matriceCopiaIncolla = [];
 
-        let sMoM = storico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
-        let sYoY = storico[chiaveYoY] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
+        let sMoM = storicoDinamico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
+        let sYoY = storicoDinamico[chiaveYoY] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ipsef:{r1_spesa:0, r1_lead:0, r1_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
 
         // --- DISTRIBUZIONE LEAD CRM ---
         const leadPerCorsoCRM = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
@@ -422,7 +424,7 @@
 
     function copiaBloccoMese() {
         let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
-        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore Workspace - Report Pronto!"); });
     }
 
     window.onload = function() {

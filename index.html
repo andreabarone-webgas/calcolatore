@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Debug Attivo</title>
+    <title>Super Aggregatore Workspace - Selettore Mese</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
         .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         h1 { color: #0056b3; font-size: 24px; margin-bottom: 5px; }
         p.subtitle { color: #6c757d; margin-bottom: 25px; }
+        .mese-selector-zone { background: #fff3cd; border: 1px solid #ffeba2; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-weight: bold; }
+        select { padding: 8px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc; margin-left: 10px; }
         .grid-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
         .drop-zone { border: 2px dashed #0056b3; border-radius: 6px; padding: 20px; text-align: center; background: #f0f7ff; cursor: pointer; transition: 0.2s; font-size: 14px; }
         .drop-zone.dragover { background: #e1eeff; }
@@ -29,11 +31,30 @@
 <body>
 
 <div class="container">
-    <h1>Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Trascina i tre file richiesti. Monitora la console (F12) per il report diagnostico in tempo reale.</p>
+    <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
+    <p class="subtitle">Seleziona il mese, poi trascina i tre file richiesti per calcolare i dati e i Delta storici via Cloud.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Caricamento dello storico dalle tab di Google Sheets...</span>
+    </div>
+
+    <div class="mese-selector-zone">
+        <label for="mese-select">📅 SELEZIONA IL MESE DA ELABORARE:</label>
+        <select id="mese-select" onchange="aggiornaMeseManuale()">
+            <option value="">-- Scegli il mese --</option>
+            <option value="gennaio 2026">Gennaio 2026</option>
+            <option value="febbraio 2026">Febbraio 2026</option>
+            <option value="marzo 2026">Marzo 2026</option>
+            <option value="aprile 2026">Aprile 2026</option>
+            <option value="maggio 2026">Maggio 2026</option>
+            <option value="giugno 2026">Giugno 2026</option>
+            <option value="luglio 2026">Luglio 2026</option>
+            <option value="agosto 2026">Agosto 2026</option>
+            <option value="settembre 2026">Settembre 2026</option>
+            <option value="ottobre 2026">Ottobre 2026</option>
+            <option value="novembre 2026">Novembre 2026</option>
+            <option value="dicembre 2026">Dicembre 2026</option>
+        </select>
     </div>
 
     <div class="grid-inputs">
@@ -62,7 +83,7 @@
     <button id="copy-btn" class="btn-copy" onclick="copiaBloccoMese()">📋 Copia Intero Blocco Mese</button>
 
     <div id="preview">
-        <h3>Anteprima Report</h3>
+        <h3 id="preview-title">Anteprima Report</h3>
         <div id="preview-table-container"></div>
     </div>
 </div>
@@ -103,7 +124,7 @@
                 scaricaConScript(URL_STORICO_2025, function(csv2025) {
                     Papa.parse(csv2025, { header: false, skipEmptyLines: 'greedy', complete: function(r2025) {
                         mappaFoglioInOggettoStorico(r2025.data);
-                        document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud caricato in memoria!";
+                        document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud sincronizzato con successo!";
                         checkStato();
                     }});
                 });
@@ -126,7 +147,7 @@
             
             if (mFound && aFound && (testoInteraRiga.includes("kpi") || riga.length < 5 || testoInteraRiga.match(new RegExp(mFound + "\\s+" + aFound)) )) {
                 bloccoCorrenteMese = mFound + aFound;
-                storicoDinamico[bloccoCorrenteMese] = { kpi: { spesa: 0, lead: 0, cpl: 0 }, google: { spesa: 0, conv: 0, cpc: 0 }, meta: { spesa: 0, lead: 0, cpl: 0 }, ipsef: { r1_spesa: 0, r1_lead: 0, r1_cpl: 0, tot_spesa: 0, tot_lead: 0, tot_cpl: 0 }, ssml: { spesa: 0, lead: 0, cpl: 0 }, corsi: {} };
+                storicoDinamico[bloccoCorrenteMese] = { kpi: { spesa: 0, lead: 0, cpl: 0 }, google: { spesa: 0, conv: 0, cpc: 0 }, meta: { spesa: 0, lead: 0, cpl: 0 }, corsi: {} };
                 sottoSezione = "KPI_GENERALE";
                 return;
             }
@@ -137,8 +158,6 @@
             if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
             if (c0.includes("google ads performance")) { sottoSezione = "GOOGLE_PERF"; return; }
             if (c0.includes("meta ads performance")) { sottoSezione = "META_PERF"; return; }
-            if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; return; }
-            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
 
             let numC1 = riga[1] ? pulisciNumero(riga[1]) : 0;
             let numC3 = riga[3] ? pulisciNumero(riga[3]) : 0;
@@ -164,16 +183,23 @@
         return isNaN(n) ? 0 : n;
     }
 
-    function setupMesiChiavi(nomeMeseGrezzo) {
-        let partiMeseAnno = nomeMeseGrezzo.split(" ");
-        let nMese = partiMeseAnno[0];
-        let aCorr = parseInt(partiMeseAnno[1]);
+    function aggiornaMeseManuale() {
+        let val = document.getElementById("mese-select").value;
+        if (!val) return;
+        meseRilevato = val;
+        document.getElementById('main-title').textContent = "Super Aggregatore Workspace - Unifortunato (" + meseRilevato.toUpperCase() + ")";
+        
+        let parti = meseRilevato.split(" ");
+        let nMese = parti[0];
+        let aCorr = parseInt(parti[1]);
         let elencoMesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
         let idxC = elencoMesi.indexOf(nMese);
         let idxP = idxC === 0 ? 11 : idxC - 1;
         let aPrec = idxC === 0 ? aCorr - 1 : aCorr;
+        
         chiaveMoM = elencoMesi[idxP] + aPrec;
         chiaveYoY = nMese + (aCorr - 1);
+        checkStato();
     }
 
     setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
@@ -196,13 +222,6 @@
             let contenuto = e.target.result;
             if (badge.id === 'badge-google') {
                 let righeGrezze = contenuto.split(/\r?\n/);
-                if (righeGrezze[1] && righeGrezze[1].includes("-")) {
-                    let partiData = righeGrezze[1].split("-");
-                    if (partiData[1]) {
-                        meseRilevato = partiData[1].replace(/"/g, '').trim().toLowerCase();
-                        setupMesiChiavi(meseRilevato);
-                    }
-                }
                 let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
                 if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
                 contenuto = righeGrezze.join("\n");
@@ -236,10 +255,8 @@
     }
 
     function costruisciWorkspace() {
-        // --- CHIAVE DI VOLTA: RIGHE DI ISPEZIONE IN CONSOLE ---
-        console.log("[DEBUG] Chiavi generate dal file caricato -> MoM da cercare: '" + chiaveMoM + "' | YoY da cercare: '" + chiaveYoY + "'");
-        console.log("[DEBUG] Elenco completo dei mesi caricati in memoria dal cloud Google Sheets:", Object.keys(storicoDinamico));
-        console.log("[DEBUG] Record MoM trovato in memoria?", storicoDinamico[chiaveMoM] ? "SÌ, DATI PRESENTI" : "NO, SCATOLA VUOTA");
+        console.log("[DEBUG] Chiavi -> MoM: '" + chiaveMoM + "' | YoY: '" + chiaveYoY + "'");
+        console.log("[DEBUG] Mesi caricati:", Object.keys(storicoDinamico));
 
         matriceCopiaIncolla = [];
         let sMoM = storicoDinamico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, corsi:{} };

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Architettura Stabile Convalidata</title>
+    <title>Super Aggregatore Workspace - Versione Convalidata Matematica</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -173,10 +173,10 @@
                     g_spesa: 0, g_lead: 0, g_cpl: 0
                 };
                 sottoSezione = "KPI_GENERALE";
-                continue;
+                return;
             }
 
-            if (!bloccoCorrenteMese) continue;
+            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) return;
             let m = storicoDinamico[bloccoCorrenteMese];
             let ipsefMem = storicoIpsefDinamico[bloccoCorrenteMese];
 
@@ -185,6 +185,9 @@
             if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; continue; }
             if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; continue; }
             if (c0.includes("meta ads ssml")) { sottoSezione = "META_SSML_PERF"; continue; }
+            if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; continue; }
+            if (c0.includes("meta ads ipsef")) { sottoSezione = "META_IPSEF_PERF"; continue; }
+            if (c0.includes("google ads ipsef")) { sottoSezione = "GOOGLE_IPSEF_PERF"; continue; }
 
             let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
 
@@ -217,52 +220,32 @@
                 if (c0.includes("lead")) m.ssml.m_lead = valB;
                 if (c0.includes("costo") || c0.includes("cpl")) m.ssml.m_cpl = valB;
             }
-            
-            // LOGICA LINEARE INTERCETTAZIONE ORIZZONTALE DI SOTTO-CASSETTI VERTICALI PER IPSEF
-            if (c0.includes("kpi ipsef")) {
-                let offset = 1;
-                while (righe[i+offset] && !righe[i+offset][0].toLowerCase().includes("meta ads ipsef") && !righe[i+offset][0].toLowerCase().includes("kpi ssml")) {
-                    let rLabel = righe[i+offset][0].toLowerCase();
-                    let rVal = pulisciNumero(righe[i+offset][1]);
-                    if (rLabel.includes("60 cfu") || rLabel.includes("classi")) {
-                        if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.r1_spesa = rVal;
-                        if (rLabel.includes("lead")) ipsefMem.r1_lead = rVal;
-                        if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.r1_cpl = rVal;
-                    } else if (rLabel.includes("tfa") || rLabel.includes("sostegno")) {
-                        if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.r4_spesa = rVal;
-                        if (rLabel.includes("lead")) ipsefMem.r4_lead = rVal;
-                        if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.r4_cpl = rVal;
-                    } else if (rLabel.includes("totale")) {
-                        if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.tot_spesa = rVal;
-                        if (rLabel.includes("lead")) ipsefMem.tot_lead = rVal;
-                        if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.tot_cpl = rVal;
-                    }
-                    offset++;
+            else if (sottoSezione === "IPSEF_PERF") {
+                if (c0.includes("60 cfu") || c0.includes("classi")) {
+                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.r1_spesa = valB;
+                    if (c0.includes("lead")) ipsefMem.r1_lead = rVal;
+                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.r1_cpl = valB;
+                } else if (c0.includes("tfa") || c0.includes("sostegno")) {
+                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.r4_spesa = valB;
+                    if (c0.includes("lead")) ipsefMem.r4_lead = valB;
+                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.r4_cpl = valB;
+                } else if (c0.includes("totale")) {
+                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.tot_spesa = valB;
+                    if (c0.includes("lead")) ipsefMem.tot_lead = valB;
+                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.tot_cpl = valB;
                 }
             }
-            if (c0.includes("meta ads ipsef")) {
-                let offset = 1;
-                while (righe[i+offset] && !righe[i+offset][0].toLowerCase().includes("google ads ipsef") && !righe[i+offset][0].toLowerCase().includes("kpi ssml")) {
-                    let rLabel = righe[i+offset][0].toLowerCase();
-                    let rVal = pulisciNumero(righe[i+offset][1]);
-                    if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.m_spesa = rVal;
-                    if (rLabel.includes("lead")) ipsefMem.m_lead = rVal;
-                    if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.m_cpl = rVal;
-                    offset++;
-                }
+            else if (sottoSezione === "META_IPSEF_PERF") {
+                if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.m_spesa = valB;
+                if (c0.includes("lead")) ipsefMem.m_lead = valB;
+                if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.m_cpl = valB;
             }
-            if (c0.includes("google ads ipsef")) {
-                let offset = 1;
-                while (righe[i+offset] && !righe[i+offset][0].toLowerCase().includes("kpi ssml")) {
-                    let rLabel = righe[i+offset][0].toLowerCase();
-                    let rVal = pulisciNumero(righe[i+offset][1]);
-                    if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.g_spesa = rVal;
-                    if (rLabel.includes("lead")) ipsefMem.g_lead = rVal;
-                    if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.g_cpl = rVal;
-                    offset++;
-                }
+            else if (sottoSezione === "GOOGLE_IPSEF_PERF") {
+                if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.g_spesa = valB;
+                if (c0.includes("lead")) ipsefMem.g_lead = valB;
+                if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.g_cpl = valB;
             }
-        }
+        });
     }
 
     function checkStato() {
@@ -393,7 +376,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- MATEMATICA REALE SENZA FORMULES CRITTE PER IPSEF ---
+        // --- MATEMATICA REALE SENZA FORMULE SCRITTE PER IPSEF ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefTotSpesa = ipsefR1Spesa + ipsefR4Spesa;

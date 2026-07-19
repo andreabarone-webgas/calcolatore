@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Corretta Stabile</title>
+    <title>Super Aggregatore Workspace - Versione Monolitica Blindata</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -176,7 +176,9 @@
                 continue;
             }
 
-            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) continue;
+            // 🛡️ ANTICRASH DEFINTIVO: Se l'oggetto mensile non è allocato, salta la riga in totale sicurezza
+            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese] || !storicoIpsefDinamico[bloccoCorrenteMese]) continue;
+            
             let m = storicoDinamico[bloccoCorrenteMese];
             let ipsefMem = storicoIpsefDinamico[bloccoCorrenteMese];
 
@@ -245,7 +247,79 @@
                 if (c0.includes("lead")) ipsefMem.g_lead = valB;
                 if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.g_cpl = valB;
             }
-        });
+        }
+    }
+
+    function pulisciNumero(valore) {
+        if (!valore) return 0;
+        let s = valore.toString().replace(/"/g, '').trim();
+        if (s.includes('.') && s.includes(',')) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        } else if (s.includes(',')) {
+            s = s.replace(',', '.');
+        } else if (s.includes('.') && s.split('.')[1].length === 3) {
+            s = s.replace(/\./g, '');
+        }
+        let n = parseFloat(s.replace(/[^0-9.-]/g, ''));
+        return isNaN(n) ? 0 : n;
+    }
+
+    function aggiornaMeseManuale() {
+        let val = document.getElementById("mese-select").value;
+        if (!val) return;
+        meseRilevato = val;
+        document.getElementById('main-title').textContent = "Super Aggregatore Workspace - Unifortunato (" + meseRilevato.toUpperCase() + ")";
+        
+        let parti = meseRilevato.split(" ");
+        let nMese = parti[0];
+        let aCorr = parseInt(parti[1]);
+        let elencoMesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+        let idxC = elencoMesi.indexOf(nMese);
+        let idxP = idxC === 0 ? 11 : idxC - 1;
+        let aPrec = idxC === 0 ? aCorr - 1 : aCorr;
+        
+        chiaveMoM = elencoMesi[idxP] + aPrec;
+        chiaveYoY = nMese + (aCorr - 1);
+        checkStato();
+    }
+
+    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
+    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
+    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
+
+    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
+        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
+    }
+
+    function handleFile(file, callback, badge, isHeaderMode) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let contenuto = e.target.result;
+            if (badge.id === 'badge-google') {
+                let righeGrezze = contenuto.split(/\r?\n/);
+                let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
+                if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
+                contenuto = righeGrezze.join("\n");
+            }
+            Papa.parse(contenuto, {
+                header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
+                    badge.textContent = "Caricato"; badge.classList.add('ready');
+                    if (isHeaderMode) {
+                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
+                        callback(datiMappati);
+                    } else {
+                        callback(res.data);
+                    }
+                }
+            });
+        };
+        reader.readAsText(file, "UTF-8");
     }
 
     function checkStato() {
@@ -376,7 +450,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- CALCOLO MATEMATICO DELTA IPSEF ---
+        // --- MATEMATICA COMPLETA DELTA IPSEF REALI ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefTotSpesa = ipsefR1Spesa + ipsefR4Spesa;
@@ -407,7 +481,7 @@
         matriceCopiaIncolla.push(["GOOGLE ADS IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["IPSEF Investimento Publicitario", "€ " + googleIpsefSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefMoM.g_spesa)), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefYoY.g_spesa))]);
         matriceCopiaIncolla.push(["IPSEF Lead Totali", Math.round(ipsefGoogleLead), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefMoM.g_lead)), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefYoY.g_lead))]);
-        matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
+        matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + googleIpsefCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
         // 🔄 KPI SSML COMPLESSIVI AL PRIMO POSTO
@@ -418,12 +492,12 @@
         matriceCopiaIncolla.push(["Costo per Lead (CRM)", "€ " + cplSsml.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplSsml, sMoM.ssml.cpl)), formatPct(calcolaVariazioneSicura(cplSsml, sYoY.ssml.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // TABELLA SOTTOSTANTE META ADS SSML COMPLETATA
+        // TABELLA SOTTOSTANTE META ADS SSML COMPLETATA REALE
         let ssmlMetaCpl = ssmlMetaLead > 0 ? (ssmlMetaSpesa / ssmlMetaLead) : 0;
         matriceCopiaIncolla.push(["META ADS SSML PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Meta Ads SSML - Investimento Pubblicitario", "€ " + ssmlMetaSpesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sMoM.ssml.m_spesa)), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sYoY.ssml.m_spesa))]);
         matriceCopiaIncolla.push(["Meta Ads SSML - Lead Totali", Math.round(ssmlMetaLead), formatPct(calcolaVariazioneSicura(ssmlMetaLead, sMoM.ssml.m_lead)), formatPct(calcolaVariazioneSicura(ssmlMetaLead, sYoY.ssml.m_lead))]);
-        matriceCopiaIncolla.push(["Meta Ads SSML - Costo per Lead", "€ " + ssmlMetaCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sMoM.ssml.m_cpl)), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sMoM.ssml.m_cpl))]);
+        matriceCopiaIncolla.push(["Meta Ads SSML - Costo per Lead", "€ " + ssmlMetaCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sMoM.ssml.m_cpl)), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sYoY.ssml.m_cpl))]);
 
         document.getElementById('copy-btn').style.display = 'block';
         document.getElementById('preview').style.display = 'block';

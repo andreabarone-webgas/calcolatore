@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Corretta Stabile</title>
+    <title>Super Aggregatore Workspace - Versione Stabile Corretta</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -31,8 +31,8 @@
 <body>
 
 <div class="container">
-    <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione automatica.</p>
+    h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -173,7 +173,7 @@
                     g_spesa: 0, g_lead: 0, g_cpl: 0
                 };
                 sottoSezione = "KPI_GENERALE";
-                continue;
+                return;
             }
 
             if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese] || !storicoIpsefDinamico[bloccoCorrenteMese]) continue;
@@ -382,8 +382,8 @@
         let ipsefTotLead = ipsefR1Lead + ipsefR4Lead;
         let ipsefTotCpl = ipsefTotLead > 0 ? (ipsefTotSpesa / ipsefTotLead) : 0;
 
-        let ipsefMetaCpl = ipsefMetaLead > 0 ? (ipsefMetaSpesaTotale / ipsefMetaLead) : 0;
         let ipsefGoogleCpl = ipsefGoogleLead > 0 ? (googleIpsefSpesaAssoluta / ipsefGoogleLead) : 0;
+        let ipsefMetaCpl = ipsefMetaLead > 0 ? (ipsefMetaSpesaTotale / ipsefMetaLead) : 0;
 
         matriceCopiaIncolla.push(["KPI IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["IPSEF Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, ipsefMoM.r1_spesa)), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, ipsefYoY.r1_spesa))]);
@@ -406,6 +406,7 @@
         matriceCopiaIncolla.push(["GOOGLE ADS IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["IPSEF Investimento Publicitario", "€ " + googleIpsefSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefMoM.g_spesa)), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefYoY.g_spesa))]);
         matriceCopiaIncolla.push(["IPSEF Lead Totali", Math.round(ipsefGoogleLead), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefMoM.g_lead)), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefYoY.g_lead))]);
+        // 🔒 SOLUZIONE DI ALLINEAMENTO VARIABILE CORRETTA: ipsefGoogleCpl
         matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
@@ -420,7 +421,7 @@
         matriceCopiaIncolla.push(["META ADS SSML PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Meta Ads SSML - Investimento Pubblicitario", "€ " + ssmlMetaSpesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sMoM.ssml.m_spesa)), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sYoY.ssml.m_spesa))]);
         matriceCopiaIncolla.push(["Meta Ads SSML - Lead Totali", Math.round(ssmlMetaLead), formatPct(calcolaVariazioneSicura(ssmlMetaLead, sMoM.ssml.m_lead)), formatPct(calcolaVariazioneSicura(ssmlMetaLead, sYoY.ssml.m_lead))]);
-        matriceCopiaIncolla.push(["Meta Ads SSML - Costo per Lead", "€ " + ssmlMetaCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sMoM.ssml.m_cpl)), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sMoM.ssml.m_cpl))]);
+        matriceCopiaIncolla.push(["Meta Ads SSML - Costo per Lead", "€ " + ssmlMetaCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sMoM.ssml.m_cpl)), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sYoY.ssml.m_cpl))]);
 
         document.getElementById('copy-btn').style.display = 'block';
         document.getElementById('preview').style.display = 'block';

@@ -1,4 +1,341 @@
-function costruisciWorkspace() {
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Aggregatore Workspace - Versione Finale Certificata</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h1 { color: #0056b3; font-size: 24px; margin-bottom: 5px; }
+        p.subtitle { color: #6c757d; margin-bottom: 25px; }
+        .mese-selector-zone { background: #fff3cd; border: 1px solid #ffeba2; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-weight: bold; }
+        select { padding: 8px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc; margin-left: 10px; width: 250px; }
+        .grid-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .drop-zone { border: 2px dashed #0056b3; border-radius: 6px; padding: 20px; text-align: center; background: #f0f7ff; cursor: pointer; transition: 0.2s; font-size: 14px; }
+        .drop-zone.dragover { background: #e1eeff; }
+        .status-badge { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: bold; background: #6c757d; color: white; }
+        .status-badge.ready { background: #28a745; color: white; }
+        .config-section { background: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 20px; }
+        .checkbox-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; font-size: 11px; }
+        .btn-copy { background-color: #28a745; color: white; border: none; padding: 14px 25px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; width: 100%; display: none; margin-top: 10px; }
+        .btn-copy:hover { background-color: #218838; }
+        #preview { margin-top: 30px; display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+        th, td { border: 1px solid #dee2e6; padding: 6px 10px; text-align: left; }
+        th { background: #212529; color: white; }
+        .sync-banner { background: #e2ffd9; border: 1px solid #28a745; color: #1e7e34; padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
+
+    <div id="cloud-status" class="sync-banner">
+        <span>🔄 Connessione allo storico Cloud in corso...</span>
+    </div>
+
+    <div class="mese-selector-zone">
+        <label for="mese-select">📅 SELEZIONA IL MESE DA ELABORARE:</label>
+        <select id="mese-select" onchange="aggiornaMeseManuale()">
+            <option value="">-- Scegli il mese --</option>
+            <option value="gennaio 2026">Gennaio 2026</option>
+            <option value="febbraio 2026">Febbraio 2026</option>
+            <option value="marzo 2026">Marzo 2026</option>
+            <option value="aprile 2026">Aprile 2026</option>
+            <option value="maggio 2026">Maggio 2026</option>
+            <option value="giugno 2026">Giugno 2026</option>
+            <option value="luglio 2026">Luglio 2026</option>
+            <option value="agosto 2026">Agosto 2026</option>
+            <option value="settembre 2026">Settembre 2026</option>
+            <option value="ottobre 2026">Ottobre 2026</option>
+            <option value="novembre 2026">Novembre 2026</option>
+            <option value="dicembre 2026">Dicembre 2026</option>
+        </select>
+    </div>
+
+    <div class="grid-inputs">
+        <div id="drop-meta" class="drop-zone" onclick="document.getElementById('file-meta').click()">
+            <p><strong>1. Report META (Ateneo)</strong><br>Trascina il CSV delle performance</p>
+            <input type="file" id="file-meta" accept=".csv" style="display:none">
+            <span id="badge-meta" class="status-badge">Mancante</span>
+        </div>
+        <div id="drop-google" class="drop-zone" onclick="document.getElementById('file-google').click()">
+            <p><strong>2. Report GOOGLE ADS</strong><br>Trascina il CSV delle campagne</p>
+            <input type="file" id="file-google" accept=".csv" style="display:none">
+            <span id="badge-google" class="status-badge">Mancante</span>
+        </div>
+        <div id="drop-crm" class="drop-zone" onclick="document.getElementById('file-crm').click()">
+            <p><strong>3. Esportazione CRM</strong><br>Trascina il CSV Persone Interessate</p>
+            <input type="file" id="file-crm" accept=".csv" style="display:none">
+            <span id="badge-crm" class="status-badge">Mancante</span>
+        </div>
+    </div>
+
+    <div class="config-section">
+        <strong>Filtro dinamico Lead CRM IPSEF (Tutte le 26 Classi di Concorso):</strong>
+        <div id="ipsef-checkboxes" class="checkbox-grid"></div>
+    </div>
+
+    <button id="copy-btn" class="btn-copy" onclick="copiaBloccoMese()">📋 Copia Intero Blocco Mese per Google Sheets</button>
+
+    <div id="preview">
+        <h3 id="preview-title">Anteprima Dati Strutturati</h3>
+        <div id="preview-table-container"></div>
+    </div>
+</div>
+
+<script>
+    const campagneIpsefBase = [
+        "Preadesione 30 cfu", "IPSEF 60 CFU", "AA22_IPSEF", "A60_IPSEF", "A28_IPSEF", 
+        "IPSEF 30 CFU", "A45_IPSEF", "B20_IPSEF", "A46_IPSEF", "A48_IPSEF", 
+        "A01_IPSEF", "A19_IPSEF", "A27_IPSEF", "A50_IPSEF", "A12_IPSEF", 
+        "B19_IPSEF", "AB22_IPSEF", "A11_IPSEF", "A18_IPSEF", "B16_IPSEF", 
+        "AC25_IPSEF", "B21_IPSEF", "A47_IPSEF", "A22_IPSEF", "A20_IPSEF", "A21_IPSEF"
+    ];
+
+    const containerCheck = document.getElementById('ipsef-checkboxes');
+    campagneIpsefBase.forEach(camp => {
+        const div = document.createElement('div');
+        div.innerHTML = `<label><input type="checkbox" value="${camp}" checked onchange="checkStato()"> ${camp}</label>`;
+        containerCheck.appendChild(div);
+    });
+
+    const ordineCorsiWorkspace = ["LM51", "L19", "L28", "Brand + Retargeting", "LMG01", "LM47", "Master", "L18", "L24", "LM77", "L8", "LM85", "L22", "Autovalutati"];
+    
+    let storicoDinamico = {};
+    let storicoIpsefDinamico = {};
+
+    let datiMetaRaw = null, datiGoogleRaw = null, datiCrmRaw = null, matriceCopiaIncolla = [];
+    let meseRilevato = "";
+    let chiaveMoM = "";
+    let chiaveYoY = "";
+
+    const URL_STORICO_2026 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?gid=1443628327&single=true&output=csv";
+    const URL_STORICO_2025 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDQE9QecMDdLDnFVScVd3V64d1UO_gQX-DHdmdrdbukKkJKeGrd0NIqjrEAzrt0_A3ZvM-1BfdWjXU/pub?gid=1211778185&single=true&output=csv";
+
+    function scaricaConScript(url, callback) {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) callback(xhr.responseText);
+        };
+        xhr.send();
+    }
+
+    function caricaTuttiGliStorici() {
+        scaricaConScript(URL_STORICO_2026, function(csv2026) {
+            Papa.parse(csv2026, { header: false, skipEmptyLines: 'greedy', complete: function(r2026) {
+                mappaFoglioInOggettoStorico(r2026.data);
+                
+                scaricaConScript(URL_STORICO_2025, function(csv2025) {
+                    Papa.parse(csv2025, { header: false, skipEmptyLines: 'greedy', complete: function(r2025) {
+                        mappaFoglioInOggettoStorico(r2025.data);
+                        document.getElementById('cloud-status').innerHTML = "✅ Storico Cloud sincronizzato con successo!";
+                        checkStato();
+                    }});
+                });
+            }});
+        });
+    }
+
+    function mappaFoglioInOggettoStorico(righe) {
+        let bloccoCorrenteMese = "";
+        let sottoSezione = "";
+
+        for (let i = 0; i < righe.length; i++) {
+            let riga = righe[i];
+            if (!riga || riga.length === 0) continue;
+            let testoInteraRiga = riga.join(" ").toLowerCase().replace(/\s+/g, ' ');
+            let c0 = riga[0] ? riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ') : "";
+
+            let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+            let mFound = mesiNomi.find(m => testoInteraRiga.includes(m));
+            let aFound = ["2024", "2025", "2026", "2027"].find(a => testoInteraRiga.includes(a));
+            
+            if (mFound && aFound && (testoInteraRiga.includes("kpi") || riga.length < 5 || testoInteraRiga.match(new RegExp(mFound + "\\s+" + aFound)) )) {
+                bloccoCorrenteMese = mFound + aFound;
+                storicoDinamico[bloccoCorrenteMese] = {
+                    kpi: { spesa: 0, lead: 0, cpl: 0 },
+                    google: { spesa: 0, conv: 0, cpc: 0 },
+                    meta: { spesa: 0, lead: 0, cpl: 0 },
+                    ssml: { spesa: 0, lead: 0, cpl: 0, m_spesa: 0, m_lead: 0, m_cpl: 0 },
+                    corsi: {}
+                };
+                storicoIpsefDinamico[bloccoCorrenteMese] = {
+                    r1_spesa: 0, r1_lead: 0, r1_cpl: 0,
+                    r4_spesa: 0, r4_lead: 0, r4_cpl: 0,
+                    tot_spesa: 0, tot_lead: 0, tot_cpl: 0,
+                    m_spesa: 0, m_lead: 0, m_cpl: 0,
+                    g_spesa: 0, g_lead: 0, g_cpl: 0
+                };
+                sottoSezione = "KPI_GENERALE";
+                continue;
+            }
+
+            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese] || !storicoIpsefDinamico[bloccoCorrenteMese]) continue;
+            
+            let m = storicoDinamico[bloccoCorrenteMese];
+            let ipsefMem = storicoIpsefDinamico[bloccoCorrenteMese];
+
+            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; continue; }
+            if (c0.includes("google ads performance") && !c0.includes("ipsef")) { sottoSezione = "GOOGLE_PERF"; continue; }
+            if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; continue; }
+            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; continue; }
+            if (c0.includes("meta ads ssml")) { sottoSezione = "META_SSML_PERF"; continue; }
+            if (c0.includes("kpi ipsef")) { sottoSezione = "IPSEF_PERF"; continue; }
+            if (c0.includes("meta ads ipsef")) { sottoSezione = "META_IPSEF_PERF"; continue; }
+            if (c0.includes("google ads ipsef")) { sottoSezione = "GOOGLE_IPSEF_PERF"; continue; }
+
+            let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
+
+            if (sottoSezione === "KPI_GENERALE") {
+                if (c0.includes("investimento")) m.kpi.spesa = valB;
+                if (c0.includes("lead totali")) m.kpi.lead = valB;
+                if (c0.includes("costo per lead")) m.kpi.cpl = valB;
+            }
+            else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
+                let chiaveCorsoPura = riga[0].toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+                m.corsi[chiaveCorsoPura] = valB;
+            }
+            else if (sottoSezione === "GOOGLE_PERF") {
+                if (c0.includes("investimento")) m.google.spesa = valB;
+                if (c0.includes("conversioni")) m.google.conv = valB;
+                if (c0.includes("costo per conversione") || c0.includes("costo per lead")) m.google.cpc = valB;
+            }
+            else if (sottoSezione === "META_PERF") {
+                if (c0.includes("investimento")) m.meta.spesa = valB;
+                if (c0.includes("lead totali")) m.meta.lead = valB;
+                if (c0.includes("costo per lead")) m.meta.cpl = valB;
+            }
+            else if (sottoSezione === "SSML_PERF") {
+                if (c0.includes("investimento")) m.ssml.spesa = valB;
+                if (c0.includes("lead totali")) m.ssml.lead = valB;
+                if (c0.includes("costo per lead")) m.ssml.cpl = valB;
+            }
+            else if (sottoSezione === "META_SSML_PERF") {
+                if (c0.includes("investimento") || c0.includes("pubblicitario")) m.ssml.m_spesa = valB;
+                if (c0.includes("lead")) m.ssml.m_lead = valB;
+                if (c0.includes("costo") || c0.includes("cpl")) m.ssml.m_cpl = valB;
+            }
+            else if (sottoSezione === "IPSEF_PERF") {
+                if (c0.includes("60 cfu") || c0.includes("classi")) {
+                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.r1_spesa = valB;
+                    if (c0.includes("lead")) ipsefMem.r1_lead = valB;
+                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.r1_cpl = valB;
+                } else if (c0.includes("tfa") || c0.includes("sostegno")) {
+                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.r4_spesa = valB;
+                    if (c0.includes("lead")) ipsefMem.r4_lead = valB;
+                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.r4_cpl = valB;
+                } else if (c0.includes("totale")) {
+                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.tot_spesa = valB;
+                    if (c0.includes("lead")) ipsefMem.tot_lead = valB;
+                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.tot_cpl = valB;
+                }
+            }
+            else if (sottoSezione === "META_IPSEF_PERF") {
+                if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.m_spesa = valB;
+                if (c0.includes("lead")) ipsefMem.m_lead = valB;
+                if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.m_cpl = valB;
+            }
+            else if (sottoSezione === "GOOGLE_IPSEF_PERF") {
+                if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.g_spesa = valB;
+                if (c0.includes("lead")) ipsefMem.g_lead = valB;
+                if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.g_cpl = valB;
+            }
+        }
+    }
+
+    function pulisciNumero(valore) {
+        if (!valore) return 0;
+        let s = valore.toString().replace(/"/g, '').trim();
+        if (s.includes('.') && s.includes(',')) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        } else if (s.includes(',')) {
+            s = s.replace(',', '.');
+        } else if (s.includes('.') && s.split('.')[1].length === 3) {
+            s = s.replace(/\./g, '');
+        }
+        let n = parseFloat(s.replace(/[^0-9.-]/g, ''));
+        return isNaN(n) ? 0 : n;
+    }
+
+    function aggiornaMeseManuale() {
+        let val = document.getElementById("mese-select").value;
+        if (!val) return;
+        meseRilevato = val;
+        document.getElementById('main-title').textContent = "Super Aggregatore Workspace - Unifortunato (" + meseRilevato.toUpperCase() + ")";
+        
+        let parti = meseRilevato.split(" ");
+        let nMese = parti[0];
+        let aCorr = parseInt(parti[1]);
+        let elencoMesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+        let idxC = elencoMesi.indexOf(nMese);
+        let idxP = idxC === 0 ? 11 : idxC - 1;
+        let aPrec = idxC === 0 ? aCorr - 1 : aCorr;
+        
+        chiaveMoM = elencoMesi[idxP] + aPrec;
+        chiaveYoY = nMese + (aCorr - 1);
+        checkStato();
+    }
+
+    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
+    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
+    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
+
+    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
+        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
+    }
+
+    function handleFile(file, callback, badge, isHeaderMode) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let contenuto = e.target.result;
+            if (badge.id === 'badge-google') {
+                let righeGrezze = contenuto.split(/\r?\n/);
+                let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
+                if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
+                contenuto = righeGrezze.join("\n");
+            }
+            Papa.parse(contenuto, {
+                header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
+                    badge.textContent = "Caricato"; badge.classList.add('ready');
+                    if (isHeaderMode) {
+                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
+                        callback(datiMappati);
+                    } else {
+                        callback(res.data);
+                    }
+                }
+            });
+        };
+        reader.readAsText(file, "UTF-8");
+    }
+
+    function checkStato() {
+        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") costruisciWorkspace();
+    }
+
+    function calcolaVariazioneSicura(corrente, precedente) {
+        if (!precedente || precedente === 0) return 0;
+        return (corrente - precedente) / precedente;
+    }
+
+    function formatPct(valore) {
+        if(valore === 0 || isNaN(valore)) return "0,00%";
+        return (valore > 0 ? "+" : "") + (valore * 100).toFixed(2).replace('.', ',') + "%";
+    }
+
+    function costruisciWorkspace() {
         matriceCopiaIncolla = [];
         
         let sMoM = storicoDinamico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ssml:{spesa:0, lead:0, cpl:0, m_spesa:0, m_lead:0, m_cpl:0}, corsi:{} };
@@ -98,6 +435,7 @@ function costruisciWorkspace() {
         matriceCopiaIncolla.push(["TOTALE", "€ " + totaleSpesaCorsi.toFixed(2).replace('.', ','), Math.round(totaleLeadCorsi), "€ " + cplGlobale.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplGlobale, sMoM.kpi.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
+        let cpcGoogle = gConvTotali > 0 ? (gSpesaBranding / gConvTotali) : 0;
         matriceCopiaIncolla.push(["GOOGLE ADS PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + gSpesaBranding.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(gSpesaBranding, sMoM.google.spesa)), formatPct(calcolaVariazioneSicura(gSpesaBranding, sYoY.google.spesa))]);
         matriceCopiaIncolla.push(["Conversioni", Math.round(gConvTotali), formatPct(calcolaVariazioneSicura(gConvTotali, sMoM.google.conv)), formatPct(calcolaVariazioneSicura(gConvTotali, sYoY.google.conv))]);
@@ -141,7 +479,6 @@ function costruisciWorkspace() {
         matriceCopiaIncolla.push(["GOOGLE ADS IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["IPSEF Investimento Publicitario", "€ " + googleIpsefSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefMoM.g_spesa)), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefYoY.g_spesa))]);
         matriceCopiaIncolla.push(["IPSEF Lead Totali", Math.round(ipsefGoogleLead), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefMoM.g_lead)), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefYoY.g_lead))]);
-        // 🔒 ALLINEAMENTO COMPILATO REALE: ipsefGoogleCpl
         matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
@@ -162,3 +499,21 @@ function costruisciWorkspace() {
         document.getElementById('preview').style.display = 'block';
         renderingAnteprimaASchermo();
     }
+
+    function renderingAnteprimaASchermo() {
+        let html = "<table>" + matriceCopiaIncolla.map(riga => "<tr>" + riga.map(cella => `<td>${cella}</td>`).join("") + "</tr>").join("") + "</table>";
+        document.getElementById('preview-table-container').innerHTML = html;
+    }
+
+    function copiaBloccoMese() {
+        let stringaTabulata = matriceCopiaIncolla.map(r => r.join("\t")).join("\n");
+        navigator.clipboard.writeText(stringaTabulata).then(() => { alert("Super Aggregatore pronto!"); });
+    }
+
+    window.onload = function() {
+        caricaTuttiGliStorici();
+    };
+</script>
+
+</body>
+</html>

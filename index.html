@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Ancoraggio Geometrico IPSEF</title>
+    <title>Super Aggregatore Workspace - Ripristino Totale Convalidato</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione automatica.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -107,7 +107,7 @@
     const ordineCorsiWorkspace = ["LM51", "L19", "L28", "Brand + Retargeting", "LMG01", "LM47", "Master", "L18", "L24", "LM77", "L8", "LM85", "L22", "Autovalutati"];
     
     let storicoDinamico = {};
-    let storicoIpsefDinamico = {}; // Cassetto strutturato geometrico per IPSEF
+    let storicoIpsefDinamico = {}; 
 
     let datiMetaRaw = null, datiGoogleRaw = null, datiCrmRaw = null, matriceCopiaIncolla = [];
     let meseRilevato = "";
@@ -144,12 +144,14 @@
 
     function mappaFoglioInOggettoStorico(righe) {
         let bloccoCorrenteMese = "";
-        
-        // Prima passata: Identifica i blocchi dei mesi
-        righe.forEach((riga, index) => {
-            if (!riga || riga.length === 0) return;
+        let sottoSezione = "";
+
+        for (let i = 0; i < righe.length; i++) {
+            let riga = righe[i];
+            if (!riga || riga.length === 0) continue;
             let testoInteraRiga = riga.join(" ").toLowerCase().replace(/\s+/g, ' ');
-            
+            let c0 = riga[0] ? riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ') : "";
+
             let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
             let mFound = mesiNomi.find(m => testoInteraRiga.includes(m));
             let aFound = ["2024", "2025", "2026", "2027"].find(a => testoInteraRiga.includes(a));
@@ -172,25 +174,7 @@
                     m_spesa: 0, m_lead: 0, m_cpl: 0,
                     g_spesa: 0, g_lead: 0, g_cpl: 0
                 };
-            }
-        });
-
-        // Seconda passata: Estrazione classica per Unifortunato/SSML ed estrazione geometrica per IPSEF
-        let sottoSezione = "";
-        bloccoCorrenteMese = "";
-
-        for (let i = 0; i < righe.length; i++) {
-            let riga = righe[i];
-            if (!riga || riga.length === 0) continue;
-            let testoInteraRiga = riga.join(" ").toLowerCase().replace(/\s+/g, ' ');
-            let c0 = riga[0] ? riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ') : "";
-
-            let mesiNomi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
-            let mFound = mesiNomi.find(m => testoInteraRiga.includes(m));
-            let aFound = ["2024", "2025", "2026", "2027"].find(a => testoInteraRiga.includes(a));
-            
-            if (mFound && aFound && (testoInteraRiga.includes("kpi") || riga.length < 5 || testoInteraRiga.match(new RegExp(mFound + "\\s+" + aFound)) )) {
-                bloccoCorrenteMese = mFound + aFound;
+                
                 sottoSezione = "KPI_GENERALE";
                 continue;
             }
@@ -204,53 +188,54 @@
             if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; continue; }
             if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; continue; }
 
-            let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
-
+            // 🔒 STRUTTURA ATENEO E SSML ORIGINALE ORIZZONTALE RIPRISTINATA AL 100%
             if (sottoSezione === "KPI_GENERALE") {
+                let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
                 if (c0.includes("investimento")) m.kpi.spesa = valB;
                 if (c0.includes("lead totali")) m.kpi.lead = valB;
                 if (c0.includes("costo per lead")) m.kpi.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
                 let chiaveCorsoPura = riga[0].toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                m.corsi[chiaveCorsoPura] = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
+                m.corsi[chiaveCorsoPura] = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : (riga[1] ? pulisciNumero(riga[1]) : 0));
             }
             else if (sottoSezione === "GOOGLE_PERF") {
+                let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
                 if (c0.includes("investimento")) m.google.spesa = valB;
                 if (c0.includes("conversioni")) m.google.conv = valB;
                 if (c0.includes("costo per conversione")) m.google.cpc = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
             else if (sottoSezione === "META_PERF") {
+                let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
                 if (c0.includes("investimento")) m.meta.spesa = valB;
                 if (c0.includes("lead totali")) m.meta.lead = valB;
                 if (c0.includes("costo per lead")) m.meta.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
             else if (sottoSezione === "SSML_PERF") {
+                let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
                 if (c0.includes("investimento")) m.ssml.spesa = valB;
                 if (c0.includes("lead totali")) m.ssml.lead = valB;
                 if (c0.includes("costo per lead")) m.ssml.cpl = riga[3] ? pulisciNumero(riga[3]) : (riga[2] ? pulisciNumero(riga[2]) : valB);
             }
             
-            // 🗺️ ANCORAGGIO GEOMETRICO ASSOLUTO PER IPSEF (ESTRAZIONE AD ALTEZZA FISSA DALLA CELLA GUIDA)
+            // 🗺️ ESTRAZIONE GEOMETRICA PER IPSEF ISOLATA E SPOSTATA PER EVITARE ACCAVALLAMENTI
             if (c0.includes("kpi ipsef")) {
                 if (righe[i+1]) ipsefMem.r1_spesa = pulisciNumero(righe[i+1][1]);
                 if (righe[i+2]) ipsefMem.r1_lead  = pulisciNumero(righe[i+2][1]);
                 if (righe[i+3]) ipsefMem.r1_cpl   = pulisciNumero(righe[i+3][1]);
-                
                 if (righe[i+4]) ipsefMem.r4_spesa = pulisciNumero(righe[i+4][1]);
                 if (righe[i+5]) ipsefMem.r4_lead  = pulisciNumero(righe[i+5][1]);
                 if (righe[i+6]) ipsefMem.r4_cpl   = pulisciNumero(righe[i+6][1]);
-                
                 if (righe[i+7]) ipsefMem.tot_spesa = pulisciNumero(righe[i+7][1]);
                 if (righe[i+8]) ipsefMem.tot_lead  = pulisciNumero(righe[i+8][1]);
                 if (righe[i+9]) ipsefMem.tot_cpl   = pulisciNumero(righe[i+9][1]);
             }
-            if (c0.includes("meta ads ipsef") || c0.includes("meta ad8 ipsef")) {
+            if (c0.includes("meta ads ipsef")) {
                 if (righe[i+1]) ipsefMem.m_spesa = pulisciNumero(righe[i+1][1]);
                 if (righe[i+2]) ipsefMem.m_lead  = pulisciNumero(righe[i+2][1]);
                 if (righe[i+3]) ipsefMem.m_cpl   = pulisciNumero(righe[i+3][1]);
             }
-            if (c0.includes("google ads ipsef") || c0.includes("google ad8 ipsef")) {
+            if (c0.includes("google ads ipsef")) {
                 if (righe[i+1]) ipsefMem.g_spesa = pulisciNumero(righe[i+1][1]);
                 if (righe[i+2]) ipsefMem.g_lead  = pulisciNumero(righe[i+2][1]);
                 if (righe[i+3]) ipsefMem.g_cpl   = pulisciNumero(righe[i+3][1]);
@@ -455,7 +440,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- CALCOLO AUTOMATICO SECURO TRAMITE GEOMETRIA DEI VETTORI ---
+        // --- MATEMATICA E RENDERING DEFINITIVO IPSEF ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefTotSpesa = ipsefR1Spesa + ipsefR4Spesa;

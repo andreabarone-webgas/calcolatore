@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Finale Certificata Delta</title>
+    <title>Super Aggregatore Workspace - Versione Interfaccia Fluida</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione automatica.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina o seleziona i tre file richiesti per l'elaborazione automatica.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -59,21 +59,23 @@
 
     <div class="grid-inputs">
         <div id="drop-meta" class="drop-zone" onclick="document.getElementById('file-meta').click()">
-            <p><strong>1. Report META (Ateneo)</strong><br>Trascina il CSV delle performance</p>
-            <input type="file" id="file-meta" accept=".csv" style="display:none">
+            <p><strong>1. Report META (Ateneo)</strong><br>Trascina o clicca qui per inserire il CSV delle performance</p>
             <span id="badge-meta" class="status-badge">Mancante</span>
         </div>
         <div id="drop-google" class="drop-zone" onclick="document.getElementById('file-google').click()">
-            <p><strong>2. Report GOOGLE ADS</strong><br>Trascina il CSV delle campagne</p>
-            <input type="file" id="file-google" accept=".csv" style="display:none">
+            <p><strong>2. Report GOOGLE ADS</strong><br>Trascina o clicca qui per inserire il CSV delle campagne</p>
             <span id="badge-google" class="status-badge">Mancante</span>
         </div>
         <div id="drop-crm" class="drop-zone" onclick="document.getElementById('file-crm').click()">
-            <p><strong>3. Esportazione CRM</strong><br>Trascina il CSV Persone Interessate</p>
-            <input type="file" id="file-crm" accept=".csv" style="display:none">
+            <p><strong>3. Esportazione CRM</strong><br>Trascina o clicca qui per inserire il CSV Persone Interessate</p>
             <span id="badge-crm" class="status-badge">Mancante</span>
         </div>
     </div>
+
+    <!-- Gli input file ora risiedono all'esterno e in sicurezza per evitare loop di attivazione dei click -->
+    <input type="file" id="file-meta" accept=".csv" style="display:none">
+    <input type="file" id="file-google" accept=".csv" style="display:none">
+    <input type="file" id="file-crm" accept=".csv" style="display:none">
 
     <div class="config-section">
         <strong>Filtro dinamico Lead CRM IPSEF (Tutte le 26 Classi di Concorso):</strong>
@@ -199,7 +201,6 @@
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
                 let chiaveCorsoPura = riga[0].toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                // 🔒 ALLINEAMENTO REALE: Estraiamo il CPL del corso che risiede in Colonna D (riga[3]) per i confronti MoM del CPL
                 m.corsi[chiaveCorsoPura] = riga[3] ? pulisciNumero(riga[3]) : 0;
             }
             else if (sottoSezione === "GOOGLE_PERF") {
@@ -292,8 +293,8 @@
         const input = document.getElementById(inputId);
         zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
         zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
+        zone.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
+        input.addEventListener('change', (e) => { e.stopPropagation(); handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
     }
 
     function handleFile(file, callback, badge, isHeaderMode) {
@@ -320,6 +321,10 @@
             });
         };
         reader.readAsText(file, "UTF-8");
+    }
+
+    function checkStato() {
+        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") costruisciWorkspace();
     }
 
     function costruisciWorkspace() {

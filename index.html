@@ -141,10 +141,10 @@ function costruisciWorkspace() {
         matriceCopiaIncolla.push(["GOOGLE ADS IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["IPSEF Investimento Publicitario", "€ " + googleIpsefSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefMoM.g_spesa)), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefYoY.g_spesa))]);
         matriceCopiaIncolla.push(["IPSEF Lead Totali", Math.round(ipsefGoogleLead), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefMoM.g_lead)), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefYoY.g_lead))]);
+        // 🔒 ALLINEAMENTO COMPILATO REALE: ipsefGoogleCpl
         matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // 🔒 FIX: Sostituita la variabile errata ssmlSpesaAssoluta con ssmlMetaSpesa
         let cplSsml = ssmlLeadTotali > 0 ? (ssmlMetaSpesa / ssmlLeadTotali) : 0;
         matriceCopiaIncolla.push(["KPI SSML", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlMetaSpesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sMoM.ssml.spesa)), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sYoY.ssml.spesa))]);

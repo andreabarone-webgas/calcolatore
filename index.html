@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Definitiva Corretta</title>
+    <title>Super Aggregatore Workspace - Architettura Stabile Garantita</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione automatica.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -50,7 +50,7 @@
             <option value="giugno 2026">Giugno 2026</option>
             <option value="luglio 2026">Luglio 2026</option>
             <option value="agosto 2026">Agosto 2026</option>
-            <option value="settembre 2026">September 2026</option>
+            <option value="settembre 2026">Settembre 2026</option>
             <option value="ottobre 2026">Ottobre 2026</option>
             <option value="novembre 2026">Novembre 2026</option>
             <option value="dicembre 2026">Dicembre 2026</option>
@@ -181,6 +181,7 @@
             let m = storicoDinamico[bloccoCorrenteMese];
             let ipsefMem = storicoIpsefDinamico[bloccoCorrenteMese];
 
+            // 🔒 FIX COMPLETO: Aggiunti i 'continue' per evitare sovrascritture immediate all'intercettazione del titolo
             if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; continue; }
             if (c0.includes("google ads performance") && !c0.includes("ipsef")) { sottoSezione = "GOOGLE_PERF"; continue; }
             if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; continue; }

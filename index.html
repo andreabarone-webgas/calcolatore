@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Certificato e Convalidato</title>
+    <title>Super Aggregatore Workspace - Versione Convalidata Matematica</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -107,6 +107,7 @@
     const ordineCorsiWorkspace = ["LM51", "L19", "L28", "Brand + Retargeting", "LMG01", "LM47", "Master", "L18", "L24", "LM77", "L8", "LM85", "L22", "Autovalutati"];
     
     let storicoDinamico = {};
+    let storicoIpsefDinamico = {}; 
 
     let datiMetaRaw = null, datiGoogleRaw = null, datiCrmRaw = null, matriceCopiaIncolla = [];
     let meseRilevato = "";
@@ -145,8 +146,9 @@
         let bloccoCorrenteMese = "";
         let sottoSezione = "";
 
-        righe.forEach(riga => {
-            if (!riga || riga.length === 0) return;
+        for (let i = 0; i < righe.length; i++) {
+            let riga = righe[i];
+            if (!riga || riga.length === 0) continue;
             let testoInteraRiga = riga.join(" ").toLowerCase().replace(/\s+/g, ' ');
             let c0 = riga[0] ? riga[0].toString().trim().toLowerCase().replace(/\s+/g, ' ') : "";
 
@@ -156,6 +158,7 @@
             
             if (mFound && aFound && (testoInteraRiga.includes("kpi") || riga.length < 5 || testoInteraRiga.match(new RegExp(mFound + "\\s+" + aFound)) )) {
                 bloccoCorrenteMese = mFound + aFound;
+                
                 storicoDinamico[bloccoCorrenteMese] = {
                     kpi: { spesa: 0, lead: 0, cpl: 0 },
                     google: { spesa: 0, conv: 0, cpc: 0 },
@@ -163,45 +166,105 @@
                     ssml: { spesa: 0, lead: 0, cpl: 0 },
                     corsi: {}
                 };
+                
+                storicoIpsefDinamico[bloccoCorrenteMese] = {
+                    r1_spesa: 0, r1_lead: 0, r1_cpl: 0,
+                    r4_spesa: 0, r4_lead: 0, r4_cpl: 0,
+                    tot_spesa: 0, tot_lead: 0, tot_cpl: 0,
+                    m_spesa: 0, m_lead: 0, m_cpl: 0,
+                    g_spesa: 0, g_lead: 0, g_cpl: 0
+                };
+                
                 sottoSezione = "KPI_GENERALE";
-                return;
+                continue;
             }
 
-            if (!bloccoCorrenteMese || !storicoDinamico[bloccoCorrenteMese]) return;
+            if (!bloccoCorrenteMese) continue;
             let m = storicoDinamico[bloccoCorrenteMese];
+            let ipsefMem = storicoIpsefDinamico[bloccoCorrenteMese];
 
-            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; return; }
-            if (c0.includes("google ads performance") && !c0.includes("ipsef")) { sottoSezione = "GOOGLE_PERF"; return; }
-            if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; return; }
-            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; return; }
+            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; continue; }
+            if (c0.includes("google ads performance") && !c0.includes("ipsef")) { sottoSezione = "GOOGLE_PERF"; continue; }
+            if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; continue; }
+            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; continue; }
 
             let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
+            let valC = riga[2] ? pulisciNumero(riga[2]) : 0;
+            let valD = riga[3] ? pulisciNumero(riga[3]) : 0;
 
             if (sottoSezione === "KPI_GENERALE") {
                 if (c0.includes("investimento")) m.kpi.spesa = valB;
                 if (c0.includes("lead totali")) m.kpi.lead = valB;
-                if (c0.includes("costo per lead")) m.kpi.cpl = valB;
+                if (c0.includes("costo per lead")) m.kpi.cpl = valD ? valD : (valC ? valC : valB);
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
                 let chiaveCorsoPura = riga[0].toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                m.corsi[chiaveCorsoPura] = valB;
+                m.corsi[chiaveCorsoPura] = valD ? valD : (valC ? valC : valB);
             }
             else if (sottoSezione === "GOOGLE_PERF") {
                 if (c0.includes("investimento")) m.google.spesa = valB;
                 if (c0.includes("conversioni")) m.google.conv = valB;
-                if (c0.includes("costo per conversione") || c0.includes("costo per lead")) m.google.cpc = valB;
+                if (c0.includes("costo per conversione") || c0.includes("costo per lead")) m.google.cpc = valD ? valD : (valC ? valC : valB);
             }
             else if (sottoSezione === "META_PERF") {
                 if (c0.includes("investimento")) m.meta.spesa = valB;
                 if (c0.includes("lead totali")) m.meta.lead = valB;
-                if (c0.includes("costo per lead")) m.meta.cpl = valB;
+                if (c0.includes("costo per lead")) m.meta.cpl = valD ? valD : (valC ? valC : valB);
             }
             else if (sottoSezione === "SSML_PERF") {
                 if (c0.includes("investimento")) m.ssml.spesa = valB;
                 if (c0.includes("lead totali")) m.ssml.lead = valB;
-                if (c0.includes("costo per lead")) m.ssml.cpl = valB;
+                if (c0.includes("costo per lead")) m.ssml.cpl = valD ? valD : (valC ? valC : valB);
             }
-        });
+            
+            // ARCHIVIAZIONE PARALLELA REALE PER COMPONENTI IPSEF DA FILE CLOUD
+            if (c0.includes("kpi ipsef")) {
+                let offset = 1;
+                while (righe[i+offset] && !righe[i+offset][0].toLowerCase().includes("meta ads ipsef") && !righe[i+offset][0].toLowerCase().includes("kpi ssml")) {
+                    let rLabel = righe[i+offset][0].toLowerCase();
+                    let rVal = pulisciNumero(righe[i+offset][1]);
+                    
+                    if (rLabel.includes("60 cfu") || rLabel.includes("classi")) {
+                        if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.r1_spesa = rVal;
+                        if (rLabel.includes("lead")) ipsefMem.r1_lead = rVal;
+                        if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.r1_cpl = rVal;
+                    }
+                    else if (rLabel.includes("tfa") || rLabel.includes("sostegno")) {
+                        if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.r4_spesa = rVal;
+                        if (rLabel.includes("lead")) ipsefMem.r4_lead = rVal;
+                        if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.r4_cpl = rVal;
+                    }
+                    else if (rLabel.includes("totale")) {
+                        if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.tot_spesa = rVal;
+                        if (rLabel.includes("lead")) ipsefMem.tot_lead = rVal;
+                        if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.tot_cpl = rVal;
+                    }
+                    offset++;
+                }
+            }
+            if (c0.includes("meta ads ipsef")) {
+                let offset = 1;
+                while (righe[i+offset] && !righe[i+offset][0].toLowerCase().includes("google ads ipsef") && !righe[i+offset][0].toLowerCase().includes("kpi ssml")) {
+                    let rLabel = righe[i+offset][0].toLowerCase();
+                    let rVal = pulisciNumero(righe[i+offset][1]);
+                    if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.m_spesa = rVal;
+                    if (rLabel.includes("lead")) ipsefMem.m_lead = rVal;
+                    if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.m_cpl = rVal;
+                    offset++;
+                }
+            }
+            if (c0.includes("google ads ipsef")) {
+                let offset = 1;
+                while (righe[i+offset] && !righe[i+offset][0].toLowerCase().includes("kpi ssml") && !righe[i+offset][0].toLowerCase().includes("meta ads ssml")) {
+                    let rLabel = righe[i+offset][0].toLowerCase();
+                    let rVal = pulisciNumero(righe[i+offset][1]);
+                    if (rLabel.includes("investimento") || rLabel.includes("spesa")) ipsefMem.g_spesa = rVal;
+                    if (rLabel.includes("lead")) ipsefMem.g_lead = rVal;
+                    if (rLabel.includes("costo") || rLabel.includes("cpl")) ipsefMem.g_cpl = rVal;
+                    offset++;
+                }
+            }
+        }
     }
 
     function pulisciNumero(valore) {
@@ -237,45 +300,6 @@
         checkStato();
     }
 
-    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
-    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
-    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
-
-    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
-        const zone = document.getElementById(zoneId);
-        const input = document.getElementById(inputId);
-        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-    }
-
-    function handleFile(file, callback, badge, isHeaderMode) {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            let contenuto = e.target.result;
-            if (badge.id === 'badge-google') {
-                let righeGrezze = contenuto.split(/\r?\n/);
-                let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
-                if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
-                contenuto = righeGrezze.join("\n");
-            }
-            Papa.parse(contenuto, {
-                header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
-                    badge.textContent = "Caricato"; badge.classList.add('ready');
-                    if (isHeaderMode) {
-                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
-                        callback(datiMappati);
-                    } else {
-                        callback(res.data);
-                    }
-                }
-            });
-        };
-        reader.readAsText(file, "UTF-8");
-    }
-
     function checkStato() {
         if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") costruisciWorkspace();
     }
@@ -295,6 +319,9 @@
         
         let sMoM = storicoDinamico[chiaveMoM] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
         let sYoY = storicoDinamico[chiaveYoY] || { kpi:{spesa:0, lead:0, cpl:0}, google:{spesa:0, conv:0, cpc:0}, meta:{spesa:0, lead:0, cpl:0}, ssml:{spesa:0, lead:0, cpl:0}, corsi:{} };
+        
+        let ipsefMoM = storicoIpsefDinamico[chiaveMoM] || { r1_spesa:0, r1_lead:0, r1_cpl:0, r4_spesa:0, r4_lead:0, r4_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0, m_spesa:0, m_lead:0, m_cpl:0, g_spesa:0, g_lead:0, g_cpl:0 };
+        let ipsefYoY = storicoIpsefDinamico[chiaveYoY] || { r1_spesa:0, r1_lead:0, r1_cpl:0, r4_spesa:0, r4_lead:0, r4_cpl:0, tot_spesa:0, tot_lead:0, tot_cpl:0, m_spesa:0, m_lead:0, m_cpl:0, g_spesa:0, g_lead:0, g_cpl:0 };
 
         const leadPerCorsoCRM = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
         let ipsefR1Lead = 0, ipsefR4Lead = 0, ssmlLeadTotali = 0;
@@ -342,20 +369,14 @@
         const spesaPerCorsoMeta = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
         let mSpesaFiltrataTot = 0, mLeadFiltratiTot = 0, ipsefR1Spesa = googleIpsefSpesaAssoluta, ipsefR4Spesa = 0;
         let ipsefMetaSpesaTotale = 0;
-        
-        let ssmlMetaSpesa = 0;
-        let ssmlMetaLead = 0;
+        let ssmlMetaSpesa = 0, ssmlMetaLead = 0;
 
         datiMetaRaw.forEach(riga => {
             let camp = riga["Nome della campagna"]; if (!camp) return;
             const t = camp.toUpperCase(), spesa = pulisciNumero(riga["Importo speso (EUR)"]), ris = pulisciNumero(riga["Risultati"]);
             if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
             
-            if (t.includes("SSML")) {
-                ssmlMetaSpesa += spesa;
-                ssmlMetaLead += ris;
-                return; 
-            }
+            if (t.includes("SSML")) { ssmlMetaSpesa += spesa; ssmlMetaLead += ris; return; }
 
             if (!t.includes("IPSEF")) { mSpesaFiltrataTot += spesa; mLeadFiltratiTot += ris; }
             if (!t.includes("IPSEF")) {
@@ -407,7 +428,7 @@
         matriceCopiaIncolla.push(["Costo per Lead", "€ " + cplMeta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplMeta, sMoM.meta.cpl)), formatPct(calcolaVariazioneSicura(cplMeta, sYoY.meta.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // --- IPSEF FORMULE INIETTATE ---
+        // --- MATEMATICA E MAPPE DELTA COMPILATE DA PROGRAMMA PER IPSEF ---
         let ipsefR1Cpl = ipsefR1Lead > 0 ? (ipsefR1Spesa / ipsefR1Lead) : 0;
         let ipsefR4Cpl = ipsefR4Lead > 0 ? (ipsefR4Spesa / ipsefR4Lead) : 0;
         let ipsefTotSpesa = ipsefR1Spesa + ipsefR4Spesa;
@@ -418,30 +439,30 @@
         let ipsefGoogleCpl = ipsefGoogleLead > 0 ? (googleIpsefSpesaAssoluta / ipsefGoogleLead) : 0;
 
         matriceCopiaIncolla.push(["KPI IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), "=IFERROR((B36-C36)/C36;0)", "=IFERROR((B36-D36)/D36;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", Math.round(ipsefR1Lead), "=IFERROR((B37-C37)/C37;0)", "=IFERROR((B37-D37)/D37;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Costo per Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Cpl.toFixed(2).replace('.', ','), "=IFERROR((B38-C38)/C38;0)", "=IFERROR((B38-D38)/D38;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario TFA Sostegno (CRM )", "€ " + ipsefR4Spesa.toFixed(2).replace('.', ','), "=IFERROR((B39-C39)/C39;0)", "=IFERROR((B39-D39)/D39;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Lead TFA Sostegno (CRM)", Math.round(ipsefR4Lead), "=IFERROR((B40-C40)/C40;0)", "=IFERROR((B40-D40)/D40;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Costo per Lead TFA Sostegno (CRM)", "€ " + ipsefR4Cpl.toFixed(2).replace('.', ','), "=IFERROR((B41-C41)/C41;0)", "=IFERROR((B41-D41)/D41;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario Totale", "€ " + ipsefTotSpesa.toFixed(2).replace('.', ','), "=IFERROR((B42-C42)/C42;0)", "=IFERROR((B42-D42)/D42;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Lead Totali (CRM)", Math.round(ipsefTotLead), "=IFERROR((B43-C43)/C43;0)", "=IFERROR((B43-D43)/D43;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Costo per Lead Totale (CRM)", "€ " + ipsefTotCpl.toFixed(2).replace('.', ','), "=IFERROR((B44-C44)/C44;0)", "=IFERROR((B44-D44)/D44;0)"]);
+        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, ipsefMoM.r1_spesa)), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, ipsefYoY.r1_spesa))]);
+        matriceCopiaIncolla.push(["IPSEF Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", Math.round(ipsefR1Lead), formatPct(calcolaVariazioneSicura(ipsefR1Lead, ipsefMoM.r1_lead)), formatPct(calcolaVariazioneSicura(ipsefR1Lead, ipsefYoY.r1_lead))]);
+        matriceCopiaIncolla.push(["IPSEF Costo per Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR1Cpl, ipsefMoM.r1_cpl)), formatPct(calcolaVariazioneSicura(ipsefR1Cpl, ipsefYoY.r1_cpl))]);
+        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario TFA Sostegno (CRM )", "€ " + ipsefR4Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR4Spesa, ipsefMoM.r4_spesa)), formatPct(calcolaVariazioneSicura(ipsefR4Spesa, ipsefYoY.r4_spesa))]);
+        matriceCopiaIncolla.push(["IPSEF Lead TFA Sostegno (CRM)", Math.round(ipsefR4Lead), formatPct(calcolaVariazioneSicura(ipsefR4Lead, ipsefMoM.r4_lead)), formatPct(calcolaVariazioneSicura(ipsefR4Lead, ipsefYoY.r4_lead))]);
+        matriceCopiaIncolla.push(["IPSEF Costo per Lead TFA Sostegno (CRM)", "€ " + ipsefR4Cpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR4Cpl, ipsefMoM.r4_cpl)), formatPct(calcolaVariazioneSicura(ipsefR4Cpl, ipsefYoY.r4_cpl))]);
+        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario Totale", "€ " + ipsefTotSpesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefTotSpesa, ipsefMoM.tot_spesa)), formatPct(calcolaVariazioneSicura(ipsefTotSpesa, ipsefYoY.tot_spesa))]);
+        matriceCopiaIncolla.push(["IPSEF Lead Totali (CRM)", Math.round(ipsefTotLead), formatPct(calcolaVariazioneSicura(ipsefTotLead, ipsefMoM.tot_lead)), formatPct(calcolaVariazioneSicura(ipsefTotLead, ipsefYoY.tot_lead))]);
+        matriceCopiaIncolla.push(["IPSEF Costo per Lead Totale (CRM)", "€ " + ipsefTotCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefTotCpl, ipsefMoM.tot_cpl)), formatPct(calcolaVariazioneSicura(ipsefTotCpl, ipsefYoY.tot_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
         matriceCopiaIncolla.push(["META ADS IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario", "€ " + ipsefMetaSpesaTotale.toFixed(2).replace('.', ','), "=IFERROR((B47-C47)/C47;0)", "=IFERROR((B47-D47)/D47;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Lead Totali", Math.round(ipsefMetaLead), "=IFERROR((B48-C48)/C48;0)", "=IFERROR((B48-D48)/D48;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefMetaCpl.toFixed(2).replace('.', ','), "=IFERROR((B49-C49)/C49;0)", "=IFERROR((B49-D49)/D49;0)"]);
+        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario", "€ " + ipsefMetaSpesaTotale.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefMetaSpesaTotale, ipsefMoM.m_spesa)), formatPct(calcolaVariazioneSicura(ipsefMetaSpesaTotale, ipsefYoY.m_spesa))]);
+        matriceCopiaIncolla.push(["IPSEF Lead Totali", Math.round(ipsefMetaLead), formatPct(calcolaVariazioneSicura(ipsefMetaLead, ipsefMoM.m_lead)), formatPct(calcolaVariazioneSicura(ipsefMetaLead, ipsefYoY.m_lead))]);
+        matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefMetaCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefMetaCpl, ipsefMoM.m_cpl)), formatPct(calcolaVariazioneSicura(ipsefMetaCpl, ipsefYoY.m_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
         matriceCopiaIncolla.push(["GOOGLE ADS IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario", "€ " + googleIpsefSpesaAssoluta.toFixed(2).replace('.', ','), "=IFERROR((B52-C52)/C52;0)", "=IFERROR((B52-D52)/D52;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Lead Totali", Math.round(ipsefGoogleLead), "=IFERROR((B53-C53)/C53;0)", "=IFERROR((B53-D53)/D53;0)"]);
-        matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), "=IFERROR((B54-C54)/C54;0)", "=IFERROR((B54-D54)/D54;0)"]);
+        matriceCopiaIncolla.push(["IPSEF Investimento Publicitario", "€ " + googleIpsefSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefMoM.g_spesa)), formatPct(calcolaVariazioneSicura(googleIpsefSpesaAssoluta, ipsefYoY.g_spesa))]);
+        matriceCopiaIncolla.push(["IPSEF Lead Totali", Math.round(ipsefGoogleLead), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefMoM.g_lead)), formatPct(calcolaVariazioneSicura(ipsefGoogleLead, ipsefYoY.g_lead))]);
+        matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // 🔄 RIORDINO SSML COMPLESSIVO (PRIMA I KPI E POI LE COMPONENTI DI META)
+        // 🔄 INVERSIONE ORDINAMENTO E RIPRISTINO ASSOLUTO KPI COMPLETI SSML
         let cplSsml = ssmlLeadTotali > 0 ? (ssmlSpesaAssoluta / ssmlLeadTotali) : 0;
         matriceCopiaIncolla.push(["KPI SSML", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlSpesaAssoluta, sMoM.ssml.spesa)), formatPct(calcolaVariazioneSicura(ssmlSpesaAssoluta, sYoY.ssml.spesa))]);
@@ -451,13 +472,9 @@
 
         let ssmlMetaCpl = ssmlMetaLead > 0 ? (ssmlMetaSpesa / ssmlMetaLead) : 0;
         matriceCopiaIncolla.push(["META ADS SSML PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
-        matriceCopiaIncolla.push(["Meta Ads SSML - Investimento Pubblicitario", "€ " + ssmlMetaSpesa.toFixed(2).replace('.', ','), "-", "-"]);
-        matriceCopiaIncolla.push(["Meta Ads SSML - Lead Totali", Math.round(ssmlMetaLead), "-", "-"]);
-        matriceCopiaIncolla.push(["Meta Ads SSML - Costo per Lead", "€ " + ssmlMetaCpl.toFixed(2).replace('.', ','), "-", "-"]);
-
-        document.getElementById('copy-btn').style.display = 'block';
-        document.getElementById('preview').style.display = 'block';
-        renderingAnteprimaASchermo();
+        matriceCopiaIncolla.push(["Meta Ads SSML - Investimento Pubblicitario", "€ " + ssmlMetaSpesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sMoM.ssml.spesa)), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sYoY.ssml.spesa))]);
+        matriceCopiaIncolla.push(["Meta Ads SSML - Lead Totali", Math.round(ssmlMetaLead), formatPct(calcolaVariazioneSicura(ssmlMetaLead, sMoM.ssml.lead)), formatPct(calcolaVariazioneSicura(ssmlMetaLead, sYoY.ssml.lead))]);
+        matriceCopiaIncolla.push(["Meta Ads SSML - Costo per Lead", "€ " + ssmlMetaCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sMoM.ssml.cpl)), formatPct(calcolaVariazioneSicura(ssmlMetaCpl, sYoY.ssml.cpl))]);
     }
 
     function renderingAnteprimaASchermo() {

@@ -181,7 +181,6 @@
             let m = storicoDinamico[bloccoCorrenteMese];
             let ipsefMem = storicoIpsefDinamico[bloccoCorrenteMese];
 
-            // 🔒 FIX COMPLETO: Aggiunti i 'continue' per evitare sovrascritture immediate all'intercettazione del titolo
             if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; continue; }
             if (c0.includes("google ads performance") && !c0.includes("ipsef")) { sottoSezione = "GOOGLE_PERF"; continue; }
             if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; continue; }
@@ -436,9 +435,11 @@
         matriceCopiaIncolla.push(["TOTALE", "€ " + totaleSpesaCorsi.toFixed(2).replace('.', ','), Math.round(totaleLeadCorsi), "€ " + cplGlobale.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplGlobale, sMoM.kpi.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
+        let cpcGoogle = gConvTotali > 0 ? (gSpesaBranding / gConvTotali) : 0;
         matriceCopiaIncolla.push(["GOOGLE ADS PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + gSpesaBranding.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(gSpesaBranding, sMoM.google.spesa)), formatPct(calcolaVariazioneSicura(gSpesaBranding, sYoY.google.spesa))]);
         matriceCopiaIncolla.push(["Conversioni", Math.round(gConvTotali), formatPct(calcolaVariazioneSicura(gConvTotali, sMoM.google.conv)), formatPct(calcolaVariazioneSicura(gConvTotali, sYoY.google.conv))]);
+        // 🔒 FIX CRIMINALE: Sostituito m.google.cpc con sYoY.google.cpc nella colonna YoY
         matriceCopiaIncolla.push(["Costo per Conversione", "€ " + cpcGoogle.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cpcGoogle, sMoM.google.cpc)), formatPct(calcolaVariazioneSicura(cpcGoogle, sYoY.google.cpc))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 

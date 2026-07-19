@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Interfaccia Fluida</title>
+    <title>Super Aggregatore Workspace - Architettura Stabile Garantita</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -72,7 +72,6 @@
         </div>
     </div>
 
-    <!-- Gli input file ora risiedono all'esterno e in sicurezza per evitare loop di attivazione dei click -->
     <input type="file" id="file-meta" accept=".csv" style="display:none">
     <input type="file" id="file-google" accept=".csv" style="display:none">
     <input type="file" id="file-crm" accept=".csv" style="display:none">
@@ -251,9 +250,11 @@
         }
     }
 
+    // 🛡️ ANTICRASH TOTALE: Se valore è indefinito o nullo, viene bloccato immediatamente a monte ritornando 0
     function pulisciNumero(valore) {
-        if (!valore) return 0;
+        if (valore === undefined || valore === null) return 0;
         let s = valore.toString().replace(/"/g, '').trim();
+        if (!s) return 0;
         if (s.includes('.') && s.includes(',')) {
             s = s.replace(/\./g, '').replace(',', '.');
         } else if (s.includes(',')) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Convalidata Stabile</title>
+    <title>Super Aggregatore Workspace - Versione Stabile Certificata</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -32,7 +32,7 @@
 
 <div class="container">
     <h1 id="main-title">Super Aggregatore Workspace - Unifortunato</h1>
-    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione dei Delta.</p>
+    <p class="subtitle">Seleziona il mese dal menu a tendina, poi trascina i tre file richiesti per l'elaborazione automatica.</p>
 
     <div id="cloud-status" class="sync-banner">
         <span>🔄 Connessione allo storico Cloud in corso...</span>
@@ -248,76 +248,18 @@
         });
     }
 
-    function pulisciNumero(valore) {
-        if (!valore) return 0;
-        let s = valore.toString().replace(/"/g, '').trim();
-        if (s.includes('.') && s.includes(',')) {
-            s = s.replace(/\./g, '').replace(',', '.');
-        } else if (s.includes(',')) {
-            s = s.replace(',', '.');
-        } else if (s.includes('.') && s.split('.')[1].length === 3) {
-            s = s.replace(/\./g, '');
-        }
-        let n = parseFloat(s.replace(/[^0-9.-]/g, ''));
-        return isNaN(n) ? 0 : n;
+    function checkStato() {
+        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") costruisciWorkspace();
     }
 
-    function aggiornaMeseManuale() {
-        let val = document.getElementById("mese-select").value;
-        if (!val) return;
-        meseRilevato = val;
-        document.getElementById('main-title').textContent = "Super Aggregatore Workspace - Unifortunato (" + meseRilevato.toUpperCase() + ")";
-        
-        let parti = meseRilevato.split(" ");
-        let nMese = parti[0];
-        let aCorr = parseInt(parti[1]);
-        let elencoMesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
-        let idxC = elencoMesi.indexOf(nMese);
-        let idxP = idxC === 0 ? 11 : idxC - 1;
-        let aPrec = idxC === 0 ? aCorr - 1 : aCorr;
-        
-        chiaveMoM = elencoMesi[idxP] + aPrec;
-        chiaveYoY = nMese + (aCorr - 1);
-        checkStato();
+    function calcolaVariazioneSicura(corrente, precedente) {
+        if (!precedente || precedente === 0) return 0;
+        return (corrente - precedente) / precedente;
     }
 
-    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
-    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
-    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
-
-    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
-        const zone = document.getElementById(zoneId);
-        const input = document.getElementById(inputId);
-        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-    }
-
-    function handleFile(file, callback, badge, isHeaderMode) {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            let contenuto = e.target.result;
-            if (badge.id === 'badge-google') {
-                let righeGrezze = contenuto.split(/\r?\n/);
-                let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
-                if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
-                contenuto = righeGrezze.join("\n");
-            }
-            Papa.parse(contenuto, {
-                header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
-                    badge.textContent = "Caricato"; badge.classList.add('ready');
-                    if (isHeaderMode) {
-                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
-                        callback(datiMappati);
-                    } else {
-                        callback(res.data);
-                    }
-                }
-            });
-        };
-        reader.readAsText(file, "UTF-8");
+    function formatPct(valore) {
+        if(valore === 0 || isNaN(valore)) return "0,00%";
+        return (valore > 0 ? "+" : "") + (valore * 100).toFixed(2).replace('.', ',') + "%";
     }
 
     function costruisciWorkspace() {
@@ -468,7 +410,7 @@
         matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // 🔄 KPI SSML COMPLESSIVI AL PRIMO POSTO
+        // 🔄 KPI SSML COMPLESSIVI ORDINATI IN CIMA ALLA SEZIONE SSML
         let cplSsml = ssmlLeadTotali > 0 ? (ssmlSpesaAssoluta / ssmlLeadTotali) : 0;
         matriceCopiaIncolla.push(["KPI SSML", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlSpesaAssoluta.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlSpesaAssoluta, sMoM.ssml.spesa)), formatPct(calcolaVariazioneSicura(ssmlSpesaAssoluta, sYoY.ssml.spesa))]);

@@ -250,7 +250,6 @@
         }
     }
 
-    // 🛡️ ANTICRASH TOTALE: Se valore è indefinito o nullo, viene bloccato immediatamente a monte ritornando 0
     function pulisciNumero(valore) {
         if (valore === undefined || valore === null) return 0;
         let s = valore.toString().replace(/"/g, '').trim();
@@ -286,7 +285,7 @@
     }
 
     setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
-    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
+    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', true); // Forzato in HeaderMode per lettura dinamica colonne
     setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
 
     function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
@@ -313,7 +312,7 @@
                 header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
                     badge.textContent = "Caricato"; badge.classList.add('ready');
                     if (isHeaderMode) {
-                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
+                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) { if(k) n[k.replace(/"/g, '').trim()] = o[k]; } return n; });
                         callback(datiMappati);
                     } else {
                         callback(res.data);
@@ -343,7 +342,7 @@
         const checkboxSelezionate = Array.from(document.querySelectorAll('#ipsef-checkboxes input:checked')).map(cb => cb.value.toUpperCase());
 
         datiCrmRaw.forEach(riga => {
-            let nomeCamp = riga["Campagna"] || ""; if(!nomeCamp) return;
+            let nomeCamp = riga["Campagna"] || riga["Campaign"] || ""; if(!nomeCamp) return;
             nomeCamp = nomeCamp.replace("Campaigns::::", "").trim();
             const t = nomeCamp.toUpperCase();
             if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
@@ -369,15 +368,23 @@
             }
         });
 
+        // 🛡️ INTERCETTAZIONE DINAMICA DELLE COLONNE DI GOOGLE ADS
         let gSpesaBranding = 0, gConvTotali = 0, googleIpsefSpesaAssoluta = 0;
-        datiGoogleRaw.slice(1).forEach(riga => {
-            if (!riga || riga.length < 5) return;
-            if ((riga[0] ? riga[0].trim() : "") === "Attivata") {
-                const camp = riga[1]; const spesa = pulisciNumero(riga[12]); const conv = pulisciNumero(riga[17]); const t = camp.toUpperCase();
-                if (t.includes("BRANDING")) gSpesaBranding += spesa;
-                gConvTotali += conv;
-                if (t.includes("IPSEF") && !t.includes("THROUGHPLAY") && !t.includes("TRAFFICO")) googleIpsefSpesaAssoluta += spesa;
-            }
+        datiGoogleRaw.forEach(riga => {
+            let camp = riga["Campagna"] || riga["Campaign"] || "";
+            if (!camp) return;
+            
+            // Trova dinamicamente i valori di spesa e conversioni cercando i nomi chiave degli header di Google Ads
+            let cellaSpesa = riga["Costo"] || riga["Spesa"] || riga["Cost"] || "0";
+            let cellaConv = riga["Conversioni"] || riga["Conversions"] || "0";
+            
+            let spesa = pulisciNumero(cellaSpesa);
+            let conv = pulisciNumero(cellaConv);
+            let t = camp.toUpperCase();
+            
+            if (t.includes("BRANDING")) gSpesaBranding += spesa;
+            gConvTotali += conv;
+            if (t.includes("IPSEF") && !t.includes("THROUGHPLAY") && !t.includes("TRAFFICO")) googleIpsefSpesaAssoluta += spesa;
         });
 
         const spesaPerCorsoMeta = { "LM51": 0, "L19": 0, "L28": 0, "Brand + Retargeting": 0, "LMG01": 0, "LM47": 0, "Master": 0, "L18": 0, "L24": 0, "LM77": 0, "L8": 0, "LM85": 0, "L22": 0, "Autovalutati": 0 };
@@ -386,8 +393,11 @@
         let ssmlMetaSpesa = 0, ssmlMetaLead = 0;
 
         datiMetaRaw.forEach(riga => {
-            let camp = riga["Nome della campagna"]; if (!camp) return;
-            const t = camp.toUpperCase(), spesa = pulisciNumero(riga["Importo speso (EUR)"]), ris = pulisciNumero(riga["Risultati"]);
+            let camp = riga["Nome della campagna"] || riga["Campaign name"] || ""; if (!camp) return;
+            let cellaSpesa = riga["Importo speso (EUR)"] || riga["Amount spent (EUR)"] || "0";
+            let cellaRis = riga["Risultati"] || riga["Results"] || "0";
+            
+            const t = camp.toUpperCase(), spesa = pulisciNumero(cellaSpesa), ris = pulisciNumero(cellaRis);
             if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
             
             if (t.includes("SSML")) { ssmlMetaSpesa += spesa; ssmlMetaLead += ris; return; }
@@ -428,6 +438,7 @@
         matriceCopiaIncolla.push(["TOTALE", "€ " + totaleSpesaCorsi.toFixed(2).replace('.', ','), Math.round(totaleLeadCorsi), "€ " + cplGlobale.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(cplGlobale, sMoM.kpi.cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
+        let cpcGoogle = gConvTotali > 0 ? (gSpesaBranding / gConvTotali) : 0;
         matriceCopiaIncolla.push(["GOOGLE ADS PERFORMANCE", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + gSpesaBranding.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(gSpesaBranding, sMoM.google.spesa)), formatPct(calcolaVariazioneSicura(gSpesaBranding, sYoY.google.spesa))]);
         matriceCopiaIncolla.push(["Conversioni", Math.round(gConvTotali), formatPct(calcolaVariazioneSicura(gConvTotali, sMoM.google.conv)), formatPct(calcolaVariazioneSicura(gConvTotali, sYoY.google.conv))]);

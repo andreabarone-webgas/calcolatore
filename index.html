@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Integrale Convalidata</title>
+    <title>Super Aggregatore Workspace - Versione Finale Certificata Delta</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -199,7 +199,8 @@
             }
             else if (sottoSezione === "CORSI_TABELLA" && !c0.includes("totale") && riga[0]) {
                 let chiaveCorsoPura = riga[0].toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                m.corsi[chiaveCorsoPura] = valB;
+                // 🔒 ALLINEAMENTO REALE: Estraiamo il CPL del corso che risiede in Colonna D (riga[3]) per i confronti MoM del CPL
+                m.corsi[chiaveCorsoPura] = riga[3] ? pulisciNumero(riga[3]) : 0;
             }
             else if (sottoSezione === "GOOGLE_PERF") {
                 if (c0.includes("investimento")) m.google.spesa = valB;
@@ -282,18 +283,43 @@
         checkStato();
     }
 
-    function checkStato() {
-        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") costruisciWorkspace();
+    setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
+    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', false);
+    setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
+
+    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
+        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
     }
 
-    function calcolaVariazioneSicura(corrente, precedente) {
-        if (!precedente || precedente === 0) return 0;
-        return (corrente - precedente) / precedente;
-    }
-
-    function formatPct(valore) {
-        if(valore === 0 || isNaN(valore)) return "0,00%";
-        return (valore > 0 ? "+" : "") + (valore * 100).toFixed(2).replace('.', ',') + "%";
+    function handleFile(file, callback, badge, isHeaderMode) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let contenuto = e.target.result;
+            if (badge.id === 'badge-google') {
+                let righeGrezze = contenuto.split(/\r?\n/);
+                let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
+                if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
+                contenuto = righeGrezze.join("\n");
+            }
+            Papa.parse(contenuto, {
+                header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
+                    badge.textContent = "Caricato"; badge.classList.add('ready');
+                    if (isHeaderMode) {
+                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
+                        callback(datiMappati);
+                    } else {
+                        callback(res.data);
+                    }
+                }
+            });
+        };
+        reader.readAsText(file, "UTF-8");
     }
 
     function costruisciWorkspace() {
@@ -458,41 +484,6 @@
         document.getElementById('copy-btn').style.display = 'block';
         document.getElementById('preview').style.display = 'block';
         renderingAnteprimaASchermo();
-    }
-
-    function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
-        const zone = document.getElementById(zoneId);
-        const input = document.getElementById(inputId);
-        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-        input.addEventListener('change', (e) => { handleFile(e.target.files[0], callback, document.getElementById(badgeId), isHeaderMode); });
-    }
-
-    function handleFile(file, callback, badge, isHeaderMode) {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            let contenuto = e.target.result;
-            if (badge.id === 'badge-google') {
-                let righeGrezze = contenuto.split(/\r?\n/);
-                let idx = righeGrezze.findIndex(r => r.toLowerCase().includes("campagna") || r.toLowerCase().includes("campaign"));
-                if (idx !== -1) righeGrezze = righeGrezze.slice(idx);
-                contenuto = righeGrezze.join("\n");
-            }
-            Papa.parse(contenuto, {
-                header: isHeaderMode, skipEmptyLines: 'greedy', complete: function(res) {
-                    badge.textContent = "Caricato"; badge.classList.add('ready');
-                    if (isHeaderMode) {
-                        let datiMappati = res.data.map(o => { let n = {}; for (let k in o) n[k.replace(/"/g, '').trim()] = o[k]; return n; });
-                        callback(datiMappati);
-                    } else {
-                        callback(res.data);
-                    }
-                }
-            });
-        };
-        reader.readAsText(file, "UTF-8");
     }
 
     function renderingAnteprimaASchermo() {

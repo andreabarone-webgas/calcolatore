@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Versione Finale Certificata</title>
+    <title>Super Aggregatore Workspace - Versione Finale Certificata IPSEF Delta</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -222,30 +222,43 @@
                 if (c0.includes("lead")) m.ssml.m_lead = valB;
                 if (c0.includes("costo") || c0.includes("cpl")) m.ssml.m_cpl = valB;
             }
+            // 🛡️ MAPPATURA IPSEF ISOLATA PER EVITARE SOVRAPPOSIZIONI DI PAROLE CHIAVE
             else if (sottoSezione === "IPSEF_PERF") {
+                let isCpl = c0.includes("costo") || c0.includes("cpl");
+                let isLead = c0.includes("lead") && !isCpl;
+                let isSpesa = c0.includes("investimento") || c0.includes("spesa");
+
                 if (c0.includes("60 cfu") || c0.includes("classi")) {
-                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.r1_spesa = valB;
-                    if (c0.includes("lead")) ipsefMem.r1_lead = valB;
-                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.r1_cpl = valB;
+                    if (isSpesa) ipsefMem.r1_spesa = valB;
+                    else if (isLead) ipsefMem.r1_lead = valB;
+                    else if (isCpl) ipsefMem.r1_cpl = valB;
                 } else if (c0.includes("tfa") || c0.includes("sostegno")) {
-                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.r4_spesa = valB;
-                    if (c0.includes("lead")) ipsefMem.r4_lead = valB;
-                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.r4_cpl = valB;
-                } else if (c0.includes("totale")) {
-                    if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.tot_spesa = valB;
-                    if (c0.includes("lead")) ipsefMem.tot_lead = valB;
-                    if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.tot_cpl = valB;
+                    if (isSpesa) ipsefMem.r4_spesa = valB;
+                    else if (isLead) ipsefMem.r4_lead = valB;
+                    else if (isCpl) ipsefMem.r4_cpl = valB;
+                } else if (c0.includes("totale") || c0.includes("tot")) {
+                    if (isSpesa) ipsefMem.tot_spesa = valB;
+                    else if (isLead) ipsefMem.tot_lead = valB;
+                    else if (isCpl) ipsefMem.tot_cpl = valB;
                 }
             }
             else if (sottoSezione === "META_IPSEF_PERF") {
-                if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.m_spesa = valB;
-                if (c0.includes("lead")) ipsefMem.m_lead = valB;
-                if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.m_cpl = valB;
+                let isCpl = c0.includes("costo") || c0.includes("cpl");
+                let isLead = c0.includes("lead") && !isCpl;
+                let isSpesa = c0.includes("investimento") || c0.includes("spesa");
+
+                if (isSpesa) ipsefMem.m_spesa = valB;
+                else if (isLead) ipsefMem.m_lead = valB;
+                else if (isCpl) ipsefMem.m_cpl = valB;
             }
             else if (sottoSezione === "GOOGLE_IPSEF_PERF") {
-                if (c0.includes("investimento") || c0.includes("spesa")) ipsefMem.g_spesa = valB;
-                if (c0.includes("lead")) ipsefMem.g_lead = valB;
-                if (c0.includes("costo") || c0.includes("cpl")) ipsefMem.g_cpl = valB;
+                let isCpl = c0.includes("costo") || c0.includes("cpl");
+                let isLead = c0.includes("lead") && !isCpl;
+                let isSpesa = c0.includes("investimento") || c0.includes("spesa");
+
+                if (isSpesa) ipsefMem.g_spesa = valB;
+                else if (isLead) ipsefMem.g_lead = valB;
+                else if (isCpl) ipsefMem.g_cpl = valB;
             }
         }
     }
@@ -336,9 +349,7 @@
 
     function checkStato() {
         if (datiMetaRaw && datiGoogleRaw && datiCrmRaw) {
-            if (!chiaveMoM) {
-                return;
-            }
+            if (!chiaveMoM) return;
             try {
                 costruisciWorkspace();
             } catch (err) {

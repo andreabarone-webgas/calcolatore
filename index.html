@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Fix Definitivo KPI IPSEF Delta</title>
+    <title>Super Aggregatore Workspace - Fix Definitivo IPSEF Delta</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -182,15 +182,20 @@
             let m = storicoDinamico[bloccoCorrenteMese];
             let ipsefMem = storicoIpsefDinamico[bloccoCorrenteMese];
 
-            if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; continue; }
-            if (c0.includes("google ads performance") && !c0.includes("ipsef")) { sottoSezione = "GOOGLE_PERF"; continue; }
-            if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; continue; }
-            if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; continue; }
-            if (c0.includes("meta ads ssml")) { sottoSezione = "META_SSML_PERF"; continue; }
-            
-            if (c0.includes("meta") && c0.includes("ipsef")) { sottoSezione = "META_IPSEF_PERF"; continue; }
-            if (c0.includes("google") && c0.includes("ipsef")) { sottoSezione = "GOOGLE_IPSEF_PERF"; continue; }
-            if (c0.includes("ipsef")) { sottoSezione = "IPSEF_PERF"; continue; }
+            // 🎯 DISTINZIONE FONDAMENTALE: Verifica se la riga corrente è un dato o un'intestazione
+            let is_data_row = c0.includes("investimento") || c0.includes("spesa") || c0.includes("lead") || c0.includes("costo") || c0.includes("cpl") || c0.includes("publicitario") || c0.includes("pubblicitario");
+
+            // Cambia sottoSezione SOLO SE la riga NON è una riga di dati
+            if (!is_data_row) {
+                if (c0.includes("corso") || c0.includes("corsi")) { sottoSezione = "CORSI_TABELLA"; continue; }
+                if (c0.includes("google ads performance") && !c0.includes("ipsef")) { sottoSezione = "GOOGLE_PERF"; continue; }
+                if (c0.includes("meta ads performance") && !c0.includes("ipsef")) { sottoSezione = "META_PERF"; continue; }
+                if (c0.includes("kpi ssml")) { sottoSezione = "SSML_PERF"; continue; }
+                if (c0.includes("meta ads ssml")) { sottoSezione = "META_SSML_PERF"; continue; }
+                if (c0.includes("meta") && c0.includes("ipsef")) { sottoSezione = "META_IPSEF_PERF"; continue; }
+                if (c0.includes("google") && c0.includes("ipsef")) { sottoSezione = "GOOGLE_IPSEF_PERF"; continue; }
+                if (c0.includes("ipsef")) { sottoSezione = "IPSEF_PERF"; continue; }
+            }
 
             let valB = riga[1] ? pulisciNumero(riga[1]) : 0;
 
@@ -223,7 +228,7 @@
                 if (c0.includes("lead")) m.ssml.m_lead = valB;
                 if (c0.includes("costo") || c0.includes("cpl")) m.ssml.m_cpl = valB;
             }
-            // 🎯 ESTRAZIONE FLESSIBILE E SENZA AMBIGUITÀ DELLO STORICO IPSEF
+            // 🛡️ POPOLAMENTO METRICHE IPSEF CORRETTO
             else if (sottoSezione === "IPSEF_PERF") {
                 let isCpl = c0.includes("costo") || c0.includes("cpl");
                 let isLead = c0.includes("lead") && !isCpl;
@@ -492,7 +497,7 @@
         let ipsefGoogleCpl = ipsefGoogleLead > 0 ? (googleIpsefSpesaAssoluta / ipsefGoogleLead) : 0;
         let ipsefMetaCpl = ipsefMetaLead > 0 ? (ipsefMetaSpesaTotale / ipsefMetaLead) : 0;
 
-        // 🎯 TABELLA KPI IPSEF
+        // 🎯 TABELLA KPI IPSEF CON DELTA MOM/YOY RICALCOLATI CON PRECISIONE
         matriceCopiaIncolla.push(["KPI IPSEF", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["IPSEF Investimento Publicitario 60 CFU - 30 CFU - Classi di Concorso (CRM)", "€ " + ipsefR1Spesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, ipsefMoM.r1_spesa)), formatPct(calcolaVariazioneSicura(ipsefR1Spesa, ipsefYoY.r1_spesa))]);
         matriceCopiaIncolla.push(["IPSEF Lead 60 CFU - 30 CFU - Classi di Concorso (CRM)", Math.round(ipsefR1Lead), formatPct(calcolaVariazioneSicura(ipsefR1Lead, ipsefMoM.r1_lead)), formatPct(calcolaVariazioneSicura(ipsefR1Lead, ipsefYoY.r1_lead))]);

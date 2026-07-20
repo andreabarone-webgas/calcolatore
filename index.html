@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Aggregatore Workspace - Architettura Stabile Garantita</title>
+    <title>Super Aggregatore Workspace - Versione Finale Certificata</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; color: #212529; padding: 20px; }
@@ -265,6 +265,17 @@
         return isNaN(n) ? 0 : n;
     }
 
+    function calcolaVariazioneSicura(corrente, precedente) {
+        if (!precedente || precedente === 0 || isNaN(precedente)) return 0;
+        if (isNaN(corrente)) corrente = 0;
+        return (corrente - precedente) / precedente;
+    }
+
+    function formatPct(valore) {
+        if (valore === 0 || isNaN(valore) || !isFinite(valore)) return "0,00%";
+        return (valore > 0 ? "+" : "") + (valore * 100).toFixed(2).replace('.', ',') + "%";
+    }
+
     function aggiornaMeseManuale() {
         let val = document.getElementById("mese-select").value;
         if (!val) return;
@@ -324,7 +335,17 @@
     }
 
     function checkStato() {
-        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw && chiaveMoM !== "") costruisciWorkspace();
+        if (datiMetaRaw && datiGoogleRaw && datiCrmRaw) {
+            if (!chiaveMoM) {
+                return;
+            }
+            try {
+                costruisciWorkspace();
+            } catch (err) {
+                console.error(err);
+                alert("Si è verificato un errore durante la generazione della tabella: " + err.message);
+            }
+        }
     }
 
     function costruisciWorkspace() {
@@ -342,7 +363,7 @@
         const checkboxSelezionate = Array.from(document.querySelectorAll('#ipsef-checkboxes input:checked')).map(cb => cb.value.toUpperCase());
 
         datiCrmRaw.forEach(riga => {
-            let nomeCamp = riga["Campagna"] || riga["Campaign"] || ""; if(!nomeCamp) return;
+            let nomeCamp = riga["Campagna"] || riga["Campaign"] || riga["Nome Campagna"] || ""; if(!nomeCamp) return;
             nomeCamp = nomeCamp.replace("Campaigns::::", "").trim();
             const t = nomeCamp.toUpperCase();
             if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
@@ -370,11 +391,11 @@
 
         let gSpesaBranding = 0, gConvTotali = 0, googleIpsefSpesaAssoluta = 0;
         datiGoogleRaw.forEach(riga => {
-            let camp = riga["Campagna"] || riga["Campaign"] || "";
+            let camp = riga["Campagna"] || riga["Campaign"] || riga["Nome Campagna"] || "";
             if (!camp) return;
             
-            let cellaSpesa = riga["Costo"] || riga["Spesa"] || riga["Cost"] || "0";
-            let cellaConv = riga["Conversioni"] || riga["Conversions"] || "0";
+            let cellaSpesa = riga["Costo"] || riga["Spesa"] || riga["Cost"] || riga["Importo speso"] || "0";
+            let cellaConv = riga["Conversioni"] || riga["Conversions"] || riga["Conv."] || "0";
             
             let spesa = pulisciNumero(cellaSpesa);
             let conv = pulisciNumero(cellaConv);
@@ -391,9 +412,9 @@
         let ssmlMetaSpesa = 0, ssmlMetaLead = 0;
 
         datiMetaRaw.forEach(riga => {
-            let camp = riga["Nome della campagna"] || riga["Campaign name"] || ""; if (!camp) return;
-            let cellaSpesa = riga["Importo speso (EUR)"] || riga["Amount spent (EUR)"] || "0";
-            let cellaRis = riga["Risultati"] || riga["Results"] || "0";
+            let camp = riga["Nome della campagna"] || riga["Nome campagna"] || riga["Campaign name"] || riga["Campagna"] || ""; if (!camp) return;
+            let cellaSpesa = riga["Importo speso (EUR)"] || riga["Importo speso"] || riga["Amount spent (EUR)"] || riga["Amount spent"] || "0";
+            let cellaRis = riga["Risultati"] || riga["Results"] || riga["Risultato"] || "0";
             
             const t = camp.toUpperCase(), spesa = pulisciNumero(cellaSpesa), ris = pulisciNumero(cellaRis);
             if (t.includes("TRAFFICO") || t.includes("THROUGHPLAY")) return;
@@ -483,7 +504,6 @@
         matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
-        // 🔒 SOLUZIONE ALLINEATA: Sostituito il frammento rotto ssmlSpesaAssoluta con ssmlMetaSpesa
         let cplSsml = ssmlLeadTotali > 0 ? (ssmlMetaSpesa / ssmlLeadTotali) : 0;
         matriceCopiaIncolla.push(["KPI SSML", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlMetaSpesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sMoM.ssml.spesa)), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sYoY.ssml.spesa))]);

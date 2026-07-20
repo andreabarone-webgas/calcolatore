@@ -285,7 +285,7 @@
     }
 
     setupDropZone('drop-meta', 'file-meta', (data) => { datiMetaRaw = data; checkStato(); }, 'badge-meta', true);
-    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', true); // Forzato in HeaderMode per lettura dinamica colonne
+    setupDropZone('drop-google', 'file-google', (data) => { datiGoogleRaw = data; checkStato(); }, 'badge-google', true);
     setupDropZone('drop-crm', 'file-crm', (data) => { datiCrmRaw = data; checkStato(); }, 'badge-crm', true);
 
     function setupDropZone(zoneId, inputId, callback, badgeId, isHeaderMode) {
@@ -368,13 +368,11 @@
             }
         });
 
-        // 🛡️ INTERCETTAZIONE DINAMICA DELLE COLONNE DI GOOGLE ADS
         let gSpesaBranding = 0, gConvTotali = 0, googleIpsefSpesaAssoluta = 0;
         datiGoogleRaw.forEach(riga => {
             let camp = riga["Campagna"] || riga["Campaign"] || "";
             if (!camp) return;
             
-            // Trova dinamicamente i valori di spesa e conversioni cercando i nomi chiave degli header di Google Ads
             let cellaSpesa = riga["Costo"] || riga["Spesa"] || riga["Cost"] || "0";
             let cellaConv = riga["Conversioni"] || riga["Conversions"] || "0";
             
@@ -485,6 +483,7 @@
         matriceCopiaIncolla.push(["IPSEF Costo per Lead", "€ " + ipsefGoogleCpl.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefMoM.g_cpl)), formatPct(calcolaVariazioneSicura(ipsefGoogleCpl, ipsefYoY.g_cpl))]);
         matriceCopiaIncolla.push(["", "", "", ""]);
 
+        // 🔒 SOLUZIONE ALLINEATA: Sostituito il frammento rotto ssmlSpesaAssoluta con ssmlMetaSpesa
         let cplSsml = ssmlLeadTotali > 0 ? (ssmlMetaSpesa / ssmlLeadTotali) : 0;
         matriceCopiaIncolla.push(["KPI SSML", "DATI", "Δ MoM", "Δ YoY"]);
         matriceCopiaIncolla.push(["Investimento Publicitario", "€ " + ssmlMetaSpesa.toFixed(2).replace('.', ','), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sMoM.ssml.spesa)), formatPct(calcolaVariazioneSicura(ssmlMetaSpesa, sYoY.ssml.spesa))]);

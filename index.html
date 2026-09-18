@@ -190,6 +190,13 @@ const CLASSI_CONCORSO = ["AA22_IPSEF","A60_IPSEF","A28_IPSEF","A45_IPSEF","B20_I
   "A01_IPSEF","A19_IPSEF","A27_IPSEF","A50_IPSEF","A12_IPSEF","B19_IPSEF","AB22_IPSEF","A11_IPSEF","A18_IPSEF",
   "B16_IPSEF","AC25_IPSEF","B21_IPSEF","A47_IPSEF","A22_IPSEF","A20_IPSEF","A21_IPSEF"];
 
+// Righe CRM escluse per scelta: non sono lead riconducibili a una campagna.
+// Restano fuori dal report ma vengono contate a parte, così l'elenco delle
+// righe non classificate segnala solo le novità da guardare davvero.
+const ESCLUSE_NOTE = [
+  { match:"LAUREA 2026", perche:"contatti grezzi da webform, non lavorati" }
+];
+
 // Voci IPSEF senza nome standard: spuntabili mese per mese, con riga di destinazione
 const VOCI_EXTRA = [
   { nome:"Preadesione 30 cfu", match:"PREADESIONE 30 CFU", dest:"r1" },
@@ -640,14 +647,19 @@ function costruisci(){
   const leadCorso = {}; ORDINE_CORSI.forEach(c=>leadCorso[c]=0);
   let r1Lead=0, r4Lead=0, brLead=0, ssmlLeadCrm=0, masterLead=0;
   const nonClassificati = {};
+  const escluse = {};
   const segna = k => nonClassificati[k] = (nonClassificati[k]||0)+1;
+  const segnaEsclusa = k => escluse[k] = (escluse[k]||0)+1;
   const contaMaster = spesaCorso["Master"] > 0;
 
   datiCrm.forEach(r=>{
     let camp = (r["Campagna"]||r["Campaign"]||r["Nome Campagna"]||"").toString();
     camp = camp.replace("Campaigns::::","").trim();
-    if(!camp){ segna("(campo Campagna vuoto)"); return; }
+    if(!camp){ segnaEsclusa("Senza campagna — non attribuibili"); return; }
     const t = camp.toUpperCase().replace(/\s+/g,' ');
+
+    const nota = ESCLUSE_NOTE.find(e=>t===e.match);
+    if(nota){ segnaEsclusa(camp+" — "+nota.perche); return; }
 
     if(t.includes("TRAFFICO")||t.includes("THROUGHPLAY")) return;
     if(t.includes("SSML")){ ssmlLeadCrm++; return; }
@@ -657,8 +669,11 @@ function costruisci(){
     if(t.includes("TFA")||t.includes("SOSTEGNO")){ r4Lead++; return; }
     const ex = extra.find(v=>t===v.match);
     if(ex){ if(ex.dest==="r1") r1Lead++; else if(ex.dest==="r4") r4Lead++; else brLead++; return; }
+    const exOff = VOCI_EXTRA.find(v=>t===v.match);
+    if(exOff){ segnaEsclusa(exOff.nome+" — non selezionata in questo mese"); return; }
     if(IPSEF_BASE.some(b=>t.includes(b))){ r1Lead++; return; }
     if(classi.length && classi.some(c=>t.includes(c))){ r1Lead++; return; }
+    if(CLASSI_CONCORSO.some(c=>t.includes(c))){ segnaEsclusa("Classi di concorso non selezionate"); return; }
     if(t.includes("IPSEF")||t.includes("CFU")){ segna("IPSEF non classificato: "+camp); return; }
 
     // Unifortunato
@@ -667,7 +682,7 @@ function costruisci(){
     if(t.includes("MASTER")){
       masterLead++;
       // i Master si contano solo nei mesi in cui abbiamo campagne Meta sui Master
-      if(contaMaster) leadCorso["Master"]++; else segna("Master (nessuna campagna Meta sui Master): "+camp);
+      if(contaMaster) leadCorso["Master"]++; else segnaEsclusa("Master — nessuna campagna Meta sui Master in questo mese");
       return;
     }
     const codice = camp.match(/(LMG\d+|LM\d+|L\d+)/i);
@@ -772,7 +787,7 @@ function costruisci(){
 
   /* ---------------- SCHERMO ---------------- */
   const classificati = totLead + ipsefLeadTot + ssmlLeadCrm;
-  disegnaDiagnostica(avvisi, nonClassificati, gRighe, gAggregate, classificati, datiCrm.length);
+  disegnaDiagnostica(avvisi, nonClassificati, escluse, gRighe, gAggregate, classificati, datiCrm.length);
   disegnaAnteprima();
   document.getElementById("btn-copia").disabled = false;
 }
@@ -780,10 +795,13 @@ function costruisci(){
 /* =========================================================================
    OUTPUT A SCHERMO
    ========================================================================= */
-function disegnaDiagnostica(avvisi, nonClassificati, gRighe, gAggregate, classificati, righeCrm){
+function disegnaDiagnostica(avvisi, nonClassificati, escluse, gRighe, gAggregate, classificati, righeCrm){
+  const nEscluse = Object.values(escluse).reduce((a,b)=>a+b,0);
+  const nAperte  = Object.values(nonClassificati).reduce((a,b)=>a+b,0);
   let h = '<div class="kpis">' +
     '<div class="kpi"><b>'+classificati+'</b><span>lead CRM classificati</span></div>' +
-    '<div class="kpi"><b>'+(righeCrm-classificati)+'</b><span>righe CRM non classificate</span></div>' +
+    '<div class="kpi"><b>'+nAperte+'</b><span>righe CRM da decidere</span></div>' +
+    '<div class="kpi"><b>'+nEscluse+'</b><span>righe CRM escluse per scelta</span></div>' +
     '<div class="kpi"><b>'+gAggregate+'</b><span>righe aggregate Google scartate</span></div>' +
     '</div>';
 
@@ -797,6 +815,13 @@ function disegnaDiagnostica(avvisi, nonClassificati, gRighe, gAggregate, classif
     h += '<div class="note-box"><h4>💡 Righe CRM non conteggiate in nessuna sezione</h4>' +
          '<p>Controlla che non ci sia niente che dovrebbe rientrare nel report.</p><ul>' +
          voci.map(v=>'<li><b>'+v[1]+'</b> — '+v[0]+'</li>').join('') + '</ul></div>';
+  }
+
+  const vociEscluse = Object.entries(escluse).sort((a,b)=>b[1]-a[1]);
+  if(vociEscluse.length){
+    h += '<div class="note-box"><h4>Righe CRM escluse per scelta</h4>' +
+         '<p class="small">Decisioni già prese: restano fuori dal report, non c\'è niente da fare.</p><ul>' +
+         vociEscluse.map(v=>'<li><b>'+v[1]+'</b> — '+v[0]+'</li>').join('') + '</ul></div>';
   }
 
   h += '<h3>Come sono state lette le campagne Google</h3><div class="table-wrap"><table>' +

@@ -56,6 +56,12 @@ tr.spacer td { border-bottom:none; padding:3px; }
 .btn-gold { display:block; width:100%; background-color:#b59828; color:#fff; text-align:center; padding:14px; font-family:'Montserrat',sans-serif; font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:1px; border:none; border-radius:4px; cursor:pointer; margin:8px 0 20px; transition:background .2s ease; }
 .btn-gold:hover { background-color:#8a6f1d; }
 .btn-gold:disabled { background-color:#dcdcdc; color:#909090; cursor:not-allowed; }
+.btn-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:8px 0 10px; }
+.btn-row .btn-gold { margin:0; }
+.btn-ghost { background-color:#ffffff; color:#b59828; border:2px solid #b59828; padding:12px; }
+.btn-ghost:hover { background-color:#faf6e8; }
+.btn-ghost:disabled { background-color:#ffffff; color:#c9c9c9; border-color:#e5e5e5; }
+@media (max-width:600px){ .btn-row { grid-template-columns:1fr; } }
 
 select, input[type=text] { font-family:'Montserrat',sans-serif; font-size:12px; padding:7px 9px; border-radius:4px; border:1px solid #e0e0e0; background:#fff; color:#333; }
 select:focus { outline:2px solid #ebd89f; }
@@ -162,7 +168,11 @@ select:focus { outline:2px solid #ebd89f; }
   </div>
 
   <h2>4. Risultato</h2>
-  <button id="btn-copia" class="btn-gold" onclick="copiaBlocco()" disabled>📋 Copia il blocco del mese per Google Sheets</button>
+  <div class="btn-row">
+    <button id="btn-copia" class="btn-gold" onclick="copiaBlocco()" disabled>📋 Copia negli appunti</button>
+    <button id="btn-scarica" class="btn-gold btn-ghost" onclick="scaricaBlocco()" disabled>⬇️ Scarica il file .csv</button>
+  </div>
+  <p class="small"><strong>Copia:</strong> incolla nel foglio con <code>Ctrl+Shift+V</code>, così tieni la formattazione delle celle. &nbsp;·&nbsp; <strong>File:</strong> nel foglio vai su <em>File → Importa → Carica</em>, scegli il file e seleziona <em>«Sostituisci i dati a partire dalla cella selezionata»</em> dopo esserti messo sulla prima cella del blocco.</p>
 
   <div id="diagnostica"></div>
   <div id="anteprima"></div>
@@ -794,6 +804,7 @@ function costruisci(){
   disegnaDiagnostica(avvisi, nonClassificati, escluse, gRighe, gAggregate, classificati, datiCrm.length);
   disegnaAnteprima();
   document.getElementById("btn-copia").disabled = false;
+  document.getElementById("btn-scarica").disabled = false;
 }
 
 /* =========================================================================
@@ -859,14 +870,55 @@ function disegnaAnteprima(){
   document.getElementById("anteprima").innerHTML = h;
 }
 
+function messaggio(id, testo){
+  const b = document.getElementById(id);
+  if(!b.dataset.etichetta) b.dataset.etichetta = b.textContent;
+  b.textContent = testo;
+  setTimeout(()=>{ b.textContent = b.dataset.etichetta; }, 4000);
+}
+
+// la clipboard puo' essere negata dal browser: senza fallback il pulsante
+// sembrava funzionare e non copiava niente
+function copiaConTextarea(testo){
+  try{
+    const ta = document.createElement("textarea");
+    ta.value = testo;
+    ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.setAttribute("readonly","");
+    document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, testo.length);
+    const esito = document.execCommand("copy");
+    ta.remove();
+    return esito;
+  } catch(e){ return false; }
+}
+
 function copiaBlocco(){
   const testo = matrice.map(r=>r.join("\t")).join("\n");
-  navigator.clipboard.writeText(testo).then(()=>{
-    const b = document.getElementById("btn-copia");
-    const t = b.textContent;
-    b.textContent = "✅ Copiato — incolla nel foglio con Ctrl+Shift+V (solo valori)";
-    setTimeout(()=>b.textContent=t, 4000);
-  });
+  const ok = ()=>messaggio("btn-copia","✅ Copiato — incolla con Ctrl+Shift+V");
+  const ko = ()=>messaggio("btn-copia","⚠️ Copia bloccata dal browser: usa Scarica");
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(testo).then(ok).catch(()=>{ copiaConTextarea(testo) ? ok() : ko(); });
+  } else {
+    copiaConTextarea(testo) ? ok() : ko();
+  }
+}
+
+function scaricaBlocco(){
+  // punto e virgola come separatore: i valori contengono la virgola dei decimali
+  const csv = matrice.map(r=>r.map(c=>{
+    const v = (c===undefined||c===null) ? "" : String(c);
+    return /[;"\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  }).join(";")).join("\r\n");
+  // BOM: senza, Sheets ed Excel sbagliano l'euro e le lettere accentate
+  const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "report-" + mese.replace(/\s+/g,"-").toLowerCase() + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
+  messaggio("btn-scarica","✅ Scaricato");
 }
 
 window.onload = caricaStorico;

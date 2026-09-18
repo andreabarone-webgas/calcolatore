@@ -194,7 +194,11 @@ const CLASSI_CONCORSO = ["AA22_IPSEF","A60_IPSEF","A28_IPSEF","A45_IPSEF","B20_I
 // Restano fuori dal report ma vengono contate a parte, così l'elenco delle
 // righe non classificate segnala solo le novità da guardare davvero.
 const ESCLUSE_NOTE = [
-  { match:"LAUREA 2026", perche:"contatti grezzi da webform, non lavorati" }
+  { match:"LAUREA 2026",       perche:"contatti grezzi da webform, non lavorati" },
+  { match:"CONTATTI SITO WEB", perche:"compilazioni del form del sito, nessuna campagna collegata" },
+  { match:"BIOMEDICALE",       perche:"campagna non in gestione" },
+  { match:"L_22",              perche:"campagna non in gestione" },
+  { match:"LMGFC",             perche:"campagna non in gestione" }
 ];
 
 // Voci IPSEF senza nome standard: spuntabili mese per mese, con riga di destinazione
@@ -815,6 +819,8 @@ function disegnaDiagnostica(avvisi, nonClassificati, escluse, gRighe, gAggregate
     h += '<div class="note-box"><h4>💡 Righe CRM non conteggiate in nessuna sezione</h4>' +
          '<p>Controlla che non ci sia niente che dovrebbe rientrare nel report.</p><ul>' +
          voci.map(v=>'<li><b>'+v[1]+'</b> — '+v[0]+'</li>').join('') + '</ul></div>';
+  } else {
+    h += '<div class="callout good">Nessuna riga da decidere: ogni riga del CRM è conteggiata in una sezione oppure esclusa per scelta.</div>';
   }
 
   const vociEscluse = Object.entries(escluse).sort((a,b)=>b[1]-a[1]);
